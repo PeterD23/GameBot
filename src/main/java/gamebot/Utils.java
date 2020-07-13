@@ -20,7 +20,8 @@ public class Utils {
 		"Do you get to the cloud district often?",
 		"Nice weather we're having!",
 		"Are you excited for any upcoming games?",
-		"I am certainly enjoying your company :heart:"
+		"I am certainly enjoying your company :heart:",
+		"You're my number one member here on this Discord!"
 	};
 	
 	public static String getARandomGreeting() {
