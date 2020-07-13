@@ -19,7 +19,8 @@ public class Utils {
 		"I hope you're having a wonderful day! :D",
 		"Do you get to the cloud district often?",
 		"Nice weather we're having!",
-		"Are you excited for any upcoming games?"
+		"Are you excited for any upcoming games?",
+		"I am certainly enjoying your company :heart:"
 	};
 	
 	public static String getARandomGreeting() {
