@@ -1,15 +1,12 @@
 package gamebot;
 
 import java.awt.Color;
-import java.awt.Image;
-import java.awt.image.BufferedImage;
-import java.net.URL;
 import java.util.Random;
-
-import javax.imageio.ImageIO;
 
 public class Utils {
 
+	public static boolean testingMode = false;
+	
 	public static Color randomColor() {
 		Random random = new Random();
 		int r = random.nextInt(200) + 55;
@@ -27,6 +24,14 @@ public class Utils {
 	public static String getARandomGreeting() {
 		Random random = new Random();
 		return randomHellos[random.nextInt(randomHellos.length)];
+	}
+	
+	public static void flipTestMode() {
+		testingMode = !testingMode;
+	}
+	
+	public static boolean isTestingMode() {
+		return testingMode;
 	}
 	
 }

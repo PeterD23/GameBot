@@ -21,6 +21,9 @@ public class ModerationListener extends CoreHelpers {
 	}
 
 	public void onMessage(MessageCreateEvent event) {
+		if(Utils.isTestingMode())
+			return;
+		
 		log.info("MessageCreateEvent fired for Moderation Listener");
 		Member usr = event.getMember().get();
 		String msg = event.getMessage().getContent().get();
@@ -32,6 +35,9 @@ public class ModerationListener extends CoreHelpers {
 	}
 
 	public void newUser(MemberJoinEvent event) {
+		if(Utils.isTestingMode())
+			return;
+		
 		Member usr = event.getMember();
 		introduceYourself(usr);
 	}

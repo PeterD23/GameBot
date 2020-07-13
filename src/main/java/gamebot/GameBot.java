@@ -27,7 +27,7 @@ public class GameBot {
 				throw new IllegalArgumentException("Please enter a client key.");
 			roleListener = new RoleChannelManagementListener();
 			moderationListener = new ModerationListener();
-
+			
 			CLIENT = new DiscordClientBuilder(args[0]).build();
 			buildReadyEvent();
 			buildMemberJoinEvent();

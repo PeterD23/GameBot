@@ -13,6 +13,7 @@ import discord4j.core.object.util.Snowflake;
 
 public class CoreHelpers {
 
+	protected long CONSOLE = 731604070573408348L;
 	protected long SERVER = 731597823640076319L;
 	protected long BOT_ID = 731598251437981717L;
 

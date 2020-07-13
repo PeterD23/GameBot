@@ -1,7 +1,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <groupId>gaming.edinburgh</groupId>
-  <artifactId>eggbot</artifactId>
+  <artifactId>gamebot</artifactId>
   <version>1</version>
   
   	<repositories>
@@ -19,7 +19,7 @@
 		  <dependency>
 		    <groupId>com.github.Discord4J</groupId> <!-- However our packages are all under sx.blah in version 2.x! -->
 		    <artifactId>Discord4J</artifactId>
-		    <version>3.0.11</version>
+		    <version>3.0.9</version>
 		  </dependency>
 		  
 		<dependency>
@@ -35,7 +35,7 @@
 	</properties>
 	
 	<build>
-		<finalName>EGG_Bot</finalName>
+		<finalName>GameBot</finalName>
 		<plugins>
 
 			<!-- download source code in Eclipse, best practice -->
@@ -85,7 +85,7 @@
 				<configuration>
 					<archive>
 						<manifest>
-            				<mainClass>eggbot.EggBot</mainClass>
+            				<mainClass>gamebot.GameBot</mainClass>
           				</manifest>
 						<addMavenDescriptor>false</addMavenDescriptor>
 					</archive>

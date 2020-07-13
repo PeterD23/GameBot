@@ -38,18 +38,17 @@ public class RoleChannelManagementListener extends CoreHelpers {
 	private interface Command {
 		void execute(String command);
 	}
-	
+
 	private static Logger log = Loggers.getLogger("logger");
-	private long CONSOLE = 731604070573408348L;
 	private long GAMES_CATEGORY = 731606361368035390L;
 	private long ADD_GAMES_HERE = 731608090633306154L;
 	private long ADD_GENRES_HERE = 731850699889049600L;
-	
+
 	private HashMap<String, Command> commands = new HashMap<>();
-	
+
 	private HashMap<String, Long> gameRoles = new HashMap<>();
 	private HashMap<String, Long> genreRoles = new HashMap<>();
-	
+
 	private PermissionSet readSend = PermissionSet.of(Permission.VIEW_CHANNEL, Permission.SEND_MESSAGES,
 			Permission.READ_MESSAGE_HISTORY);
 
@@ -60,8 +59,13 @@ public class RoleChannelManagementListener extends CoreHelpers {
 		setupReactsOnGenres();
 		initialiseCommands();
 	}
-	
+
 	public void onMessage(MessageCreateEvent event) {
+		if (Utils.isTestingMode()) {
+			checkIfDisablingTestMode(event);
+			return;
+		}
+
 		log.info("MessageCreateEvent fired for Role Listener");
 
 		Message message = event.getMessage();
@@ -76,33 +80,39 @@ public class RoleChannelManagementListener extends CoreHelpers {
 			parseConsole(msg);
 		}
 	}
-	
+
 	public void onReact(ReactionAddEvent event) {
-		if(event.getUser().block().isBot())
+		if (Utils.isTestingMode())
 			return;
-		
+
+		if (event.getUser().block().isBot())
+			return;
+
 		if (event.getChannelId().asLong() == ADD_GAMES_HERE) {
 			Custom emoji = event.getEmoji().asCustomEmoji().get();
 			gameRoleToUser(event.getUser().block(), emoji.getName(), true);
-		} else if(event.getChannelId().asLong() == ADD_GENRES_HERE) {
+		} else if (event.getChannelId().asLong() == ADD_GENRES_HERE) {
 			Custom emoji = event.getEmoji().asCustomEmoji().get();
 			genreRoleToUser(event.getUser().block(), emoji.getName(), true);
 		}
 	}
-	
+
 	public void onUnreact(ReactionRemoveEvent event) {
-		if(event.getUser().block().isBot())
+		if (Utils.isTestingMode())
 			return;
-		
+
+		if (event.getUser().block().isBot())
+			return;
+
 		if (event.getChannelId().asLong() == ADD_GAMES_HERE) {
 			Custom emoji = event.getEmoji().asCustomEmoji().get();
 			gameRoleToUser(event.getUser().block(), emoji.getName(), false);
-		} else if(event.getChannelId().asLong() == ADD_GENRES_HERE) {
+		} else if (event.getChannelId().asLong() == ADD_GENRES_HERE) {
 			Custom emoji = event.getEmoji().asCustomEmoji().get();
 			genreRoleToUser(event.getUser().block(), emoji.getName(), false);
 		}
 	}
-	
+
 	private void initialiseCommands() {
 		commands.put("!add-game", msg -> addGame(msg));
 		commands.put("!link-react", msg -> addReact(msg.split("\\s")));
@@ -114,7 +124,12 @@ public class RoleChannelManagementListener extends CoreHelpers {
 			readDataIntoMap(genreRoles, "genres");
 			sendMessage(CONSOLE, "Re-synchronised game and genre lists!");
 		});
-		commands.put("!add-role", msg -> sendMessage(CONSOLE, "Role " + msg + " of ID "+createRole(msg).getId().asLong() + " created!"));
+		commands.put("!add-role", msg -> sendMessage(CONSOLE,
+				"Role " + msg + " of ID " + createRole(msg).getId().asLong() + " created!"));
+		commands.put("!test", msg -> {
+			Utils.flipTestMode();
+			sendMessage(CONSOLE, "Testing mode is now enabled. You can now run a local copy of the bot and have it perform actions.");
+		});
 	}
 
 	private String trimCommand(String string) {
@@ -162,17 +177,27 @@ public class RoleChannelManagementListener extends CoreHelpers {
 	private void parseConsole(String message) {
 		String command = message.split("\\s")[0];
 		Command toExec = commands.get(command);
-		if(toExec != null) {
+		if (toExec != null) {
 			toExec.execute(trimCommand(message));
 		}
 	}
 
 	private void clearChannel() {
 		TextChannel chn = getChannel(CONSOLE);
-		Snowflake lastMsg = chn.getLastMessageId().get();		
+		Snowflake lastMsg = chn.getLastMessageId().get();
 		chn.bulkDelete(chn.getMessagesBefore(lastMsg).map(m -> m.getId())).blockFirst();
 	}
 	
+	private void checkIfDisablingTestMode(MessageCreateEvent event) {
+		Message message = event.getMessage();
+		Channel chn = message.getChannel().block();
+		if (chn.getId().asLong() == CONSOLE && message.getContent().get().equals("!test")) {
+			Utils.flipTestMode();
+			sendMessage(CONSOLE,
+					"Testing mode is now disabled. Be sure to not be running the bot locally to avoid action duplication.");
+		}
+	}
+
 	private void gameRoleToUser(User user, String emojiName, boolean add) {
 		Member member = user.asMember(getGuild().getId()).block();
 		if (add) {
@@ -181,7 +206,7 @@ public class RoleChannelManagementListener extends CoreHelpers {
 			member.removeRole(Snowflake.of(gameRoles.get(emojiName).longValue())).block();
 		}
 	}
-	
+
 	private void genreRoleToUser(User user, String emojiName, boolean add) {
 		Member member = user.asMember(getGuild().getId()).block();
 		if (add) {
@@ -207,7 +232,8 @@ public class RoleChannelManagementListener extends CoreHelpers {
 		GuildEmoji emoji = getGuild().getEmojis().filter(p -> p.getName().equals(data[1])).next().block();
 		msg.addReaction(ReactionEmoji.custom(emoji)).block();
 
-		sendMessage(CONSOLE, "Successfully linked emoji to game :) I've reacted to it on the games list so users can now add the game to their list!");
+		sendMessage(CONSOLE,
+				"Successfully linked emoji to game :) I've reacted to it on the games list so users can now add the game to their list!");
 		saveGameRoles();
 	}
 
@@ -234,7 +260,7 @@ public class RoleChannelManagementListener extends CoreHelpers {
 		}).block();
 
 		gameRoles.put(channelName, new Long(gameRole.getId().asLong()));
-		
+
 		sendMessage(CONSOLE, gameName + " successfully created! :)");
 		saveGameRoles();
 	}
