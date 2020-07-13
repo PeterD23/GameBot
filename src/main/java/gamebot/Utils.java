@@ -18,7 +18,8 @@ public class Utils {
 	private static String randomHellos[] = new String[] {
 		"I hope you're having a wonderful day! :D",
 		"Do you get to the cloud district often?",
-		"Nice weather we're having!"
+		"Nice weather we're having!",
+		"Are you excited for any upcoming games?"
 	};
 	
 	public static String getARandomGreeting() {
