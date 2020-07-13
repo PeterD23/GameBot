@@ -6,12 +6,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.io.FileUtils;
 
-import discord4j.core.DiscordClient;
 import discord4j.core.event.domain.lifecycle.ReadyEvent;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.event.domain.message.ReactionAddEvent;
@@ -122,13 +122,15 @@ public class RoleChannelManagementListener extends CoreHelpers {
 		commands.put("!sync", msg -> {
 			readDataIntoMap(gameRoles, "games");
 			readDataIntoMap(genreRoles, "genres");
+			setupReactsOnGenres();
 			sendMessage(CONSOLE, "Re-synchronised game and genre lists!");
 		});
 		commands.put("!add-role", msg -> sendMessage(CONSOLE,
 				"Role " + msg + " of ID " + createRole(msg).getId().asLong() + " created!"));
 		commands.put("!test", msg -> {
 			Utils.flipTestMode();
-			sendMessage(CONSOLE, "Testing mode is now enabled. You can now run a local copy of the bot and have it perform actions.");
+			sendMessage(CONSOLE,
+					"Testing mode is now enabled. You can now run a local copy of the bot and have it perform actions.");
 		});
 	}
 
@@ -166,11 +168,12 @@ public class RoleChannelManagementListener extends CoreHelpers {
 	private void setupReactsOnGenres() {
 		TextChannel chn = getChannel(ADD_GENRES_HERE);
 		Message msg = chn.getLastMessage().block();
-		msg.addReaction(ReactionEmoji.custom(getEmojiByName("shooter"))).block();
-		msg.addReaction(ReactionEmoji.custom(getEmojiByName("strategy"))).block();
-		msg.addReaction(ReactionEmoji.custom(getEmojiByName("rpg"))).block();
-		msg.addReaction(ReactionEmoji.custom(getEmojiByName("racing"))).block();
-		msg.addReaction(ReactionEmoji.custom(getEmojiByName("simulation"))).block();
+		Iterator<?> it = genreRoles.entrySet().iterator();
+		while (it.hasNext()) {
+			Map.Entry pair = (Map.Entry) it.next();
+			msg.addReaction(ReactionEmoji.custom(getEmojiByName((String) pair.getKey()))).block();
+			it.remove();
+		}
 	}
 
 	// Console Parsing
@@ -187,7 +190,7 @@ public class RoleChannelManagementListener extends CoreHelpers {
 		Snowflake lastMsg = chn.getLastMessageId().get();
 		chn.bulkDelete(chn.getMessagesBefore(lastMsg).map(m -> m.getId())).blockFirst();
 	}
-	
+
 	private void checkIfDisablingTestMode(MessageCreateEvent event) {
 		Message message = event.getMessage();
 		Channel chn = message.getChannel().block();
