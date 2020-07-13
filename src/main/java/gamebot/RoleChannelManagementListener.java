@@ -172,7 +172,6 @@ public class RoleChannelManagementListener extends CoreHelpers {
 		while (it.hasNext()) {
 			Map.Entry pair = (Map.Entry) it.next();
 			msg.addReaction(ReactionEmoji.custom(getEmojiByName((String) pair.getKey()))).block();
-			it.remove();
 		}
 	}
 
