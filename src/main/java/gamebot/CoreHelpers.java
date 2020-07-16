@@ -40,6 +40,10 @@ public class CoreHelpers {
 	protected Role getRoleByName(String name) {
 		return getGuild().getRoles().filter(p -> p.getName().equals(name)).next().block();
 	}
+	
+	protected Member getUserById(long id) {
+		return getGuild().getMembers().filter(p -> p.getId().asLong() == id).next().block();
+	}
 
 	protected void sendMessage(long channelId, String message) {
 		getChannel(channelId).createMessage(message).block();
