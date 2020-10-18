@@ -230,7 +230,7 @@ public class RoleChannelManagementListener extends CoreHelpers {
 		gameRoles.put(data[1], new Long(roleId));
 
 		// React to Game List
-		Message msg = getChannel(ADD_GAMES_HERE).getLastMessage().block();
+		Message msg = getChannel(ADD_GAMES_HERE).getMessageById(Snowflake.of(731854632900362240L)).block(); // Directly reference the ID instead of doing .getLastMessage() which is failing
 		GuildEmoji emoji = getGuild().getEmojis().filter(p -> p.getName().equals(data[1])).next().block();
 		msg.addReaction(ReactionEmoji.custom(emoji)).block();
 
