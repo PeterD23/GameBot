@@ -1,5 +1,10 @@
 package gamebot;
 
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+
 import discord4j.core.DiscordClient;
 import discord4j.core.DiscordClientBuilder;
 import discord4j.core.event.domain.guild.MemberJoinEvent;
@@ -15,6 +20,7 @@ public class GameBot {
 
 	private RoleChannelManagementListener roleListener;
 	private ModerationListener moderationListener;
+	private IntervalListener intervalListener;
 	
 	public static void main(String[] args) {
 		GameBot bot = new GameBot();
@@ -27,6 +33,7 @@ public class GameBot {
 				throw new IllegalArgumentException("Please enter a client key.");
 			roleListener = new RoleChannelManagementListener();
 			moderationListener = new ModerationListener();
+			intervalListener = new IntervalListener();
 			
 			CLIENT = new DiscordClientBuilder(args[0]).build();
 			buildReadyEvent();
@@ -34,6 +41,9 @@ public class GameBot {
 			buildMessageCreateEvent();
 			buildReactionAddEvent();
 			buildReactionRemoveEvent();
+			buildInterval();
+			SpotifyHelpers.init(args[1], args[2]);
+			
 			CLIENT.login().block();
 			
 		} catch (Exception e) {
@@ -45,6 +55,7 @@ public class GameBot {
 		CLIENT.getEventDispatcher().on(ReadyEvent.class).flatMap(ready -> {
 			roleListener.onReady(ready);
 			moderationListener.onReady(ready);
+			intervalListener.onReady(ready);
 			return Mono.empty();
 		}).subscribe();
 	}
@@ -59,6 +70,7 @@ public class GameBot {
 		CLIENT.getEventDispatcher().on(MessageCreateEvent.class).flatMap(event -> Mono.fromRunnable(() -> {
 			roleListener.onMessage(event);
 			moderationListener.onMessage(event);
+			intervalListener.onMessage(event);
 		}).onErrorResume(t -> {
 			t.printStackTrace();
 			return Mono.empty();
@@ -81,4 +93,9 @@ public class GameBot {
 		})).subscribe();
 	}
 	
+	private void buildInterval() {
+		ScheduledExecutorService scheduledExecutorService =
+		        Executors.newScheduledThreadPool(1);	
+		scheduledExecutorService.schedule(() -> intervalListener.tick(), 1, TimeUnit.MINUTES);
+	}
 }
