@@ -27,11 +27,10 @@ public class ModerationListener extends CoreHelpers {
 
 		log.info("MessageCreateEvent fired for Moderation Listener");
 		Member usr = event.getMember().get();
-		String msg = event.getMessage().getContent().get();
-
 		if (usr.isBot())
 			return;
-
+		
+		String msg = event.getMessage().getContent().orElse("");
 		parseCommand(event, msg);
 	}
 
@@ -68,7 +67,7 @@ public class ModerationListener extends CoreHelpers {
 		}
 
 		int count = message.split("\\s").length;
-		if (count > 30) {
+		if (count >= 30) {
 			member.addRole(getRoleByName("Verified").getId()).block();
 			sendMessage(channelId, member.getMention()
 					+ " Cool! I've verified you. You now have access to the rest of the server! Use the add-games-here and add-genres-here channels to subscribe to the games and genres you're interested in!");
