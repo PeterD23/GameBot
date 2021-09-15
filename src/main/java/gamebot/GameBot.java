@@ -96,6 +96,6 @@ public class GameBot {
 	private void buildInterval() {
 		ScheduledExecutorService scheduledExecutorService =
 		        Executors.newScheduledThreadPool(1);	
-		scheduledExecutorService.schedule(() -> intervalListener.tick(), 1, TimeUnit.MINUTES);
+		scheduledExecutorService.scheduleAtFixedRate(() -> intervalListener.tick(), 0, 1, TimeUnit.MINUTES);
 	}
 }
