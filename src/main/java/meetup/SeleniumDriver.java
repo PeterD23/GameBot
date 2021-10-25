@@ -54,7 +54,7 @@ public class SeleniumDriver {
 	}
 
 	private ChromeOptions setHeadlessMode() {
-		return new ChromeOptions();// ChromeOptions().addArguments("--headless", "--window-size=1920,1080");
+		return new ChromeOptions().addArguments("--headless", "--window-size=1920,1080");
 	}
 
 	public boolean login() {
