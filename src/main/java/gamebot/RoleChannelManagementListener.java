@@ -2,6 +2,7 @@ package gamebot;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -22,6 +23,7 @@ import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.GuildEmoji;
 import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.Message;
+import discord4j.core.object.entity.PrivateChannel;
 import discord4j.core.object.entity.Role;
 import discord4j.core.object.entity.TextChannel;
 import discord4j.core.object.entity.User;
@@ -65,11 +67,13 @@ public class RoleChannelManagementListener extends CoreHelpers {
 			checkIfDisablingTestMode(event);
 			return;
 		}
-
-		log.info("MessageCreateEvent fired for Role Listener");
-
+		
 		Message message = event.getMessage();
 		Channel chn = message.getChannel().block();
+		if(chn instanceof PrivateChannel)
+			return; // discard pm
+		
+		log.info("MessageCreateEvent fired for Role Listener");		
 		String msg = message.getContent().orElse("");
 		Member usr = message.getAuthorAsMember().block();
 
@@ -143,7 +147,7 @@ public class RoleChannelManagementListener extends CoreHelpers {
 	private void readDataIntoMap(HashMap<String, Long> map, String fileName) {
 		map.clear();
 		try {
-			List<String> lines = FileUtils.readLines(new File(fileName));
+			List<String> lines = FileUtils.readLines(new File(fileName), Charset.defaultCharset());
 			for (String line : lines) {
 				String[] data = line.split(" ");
 				map.put(data[0], new Long(data[1]));
