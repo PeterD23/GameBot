@@ -60,6 +60,18 @@ public class MeetupLinker {
 		return false;
 	}
 	
+	public static Long getUserByMeetupId(Long id) {
+		log.info("Searching for id "+id+"... in verified set of "+verified.size());
+		for (Map.Entry<Long, Long> entry : verified.entrySet()) {
+		    if(id.longValue() == entry.getValue().longValue()) {
+		    	log.info("Found!");
+		    	return entry.getKey();
+		    }
+		}
+		log.info("Not found, returning zero");
+		return 0L;
+	}
+	
 	public static boolean isQueued(Long userId) {
 		return queuedUsers.get(userId) != null;
 	}

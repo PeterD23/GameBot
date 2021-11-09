@@ -25,7 +25,7 @@ public class ModerationListener extends CoreHelpers {
 	private long INTRODUCTIONS = 732247266173124648L;
 	private long MEETUP_VERIFIED = 902260032945651774L;
 	private HashMap<String, UserCommand> commands = new HashMap<>();
-	
+
 	public void onReady(ReadyEvent event) {
 		init(event);
 		initialiseCommands();
@@ -38,22 +38,23 @@ public class ModerationListener extends CoreHelpers {
 
 		Message message = event.getMessage();
 		Channel chn = message.getChannel().block();
-		if(chn instanceof PrivateChannel){
+		if (chn instanceof PrivateChannel) {
 			User usr = message.getAuthor().get();
-			if(usr.isBot())
+			if (usr.isBot())
 				return;
 			checkIfVerifyingMeetup(usr, event.getMessage().getContent().orElse(""));
 			return;
 		}
-			
+
 		log.info("MessageCreateEvent fired for Moderation Listener");
 		Member usr = event.getMember().get();
 		if (usr.isBot())
 			return;
-		
+
 		String msg = event.getMessage().getContent().orElse("");
 		parseCommand(event, msg);
-		if(chn.getId().asLong() == MUSIC && new Random().nextBoolean()) {
+		if (chn.getId().asLong() == MUSIC && new Random().nextInt(6) == 5
+				&& msg.startsWith("https://open.spotify.com/track/")) {
 			sendMessage(MUSIC, "https://c.tenor.com/1S9zA-EMU4YAAAAC/stay-out.gif");
 		}
 	}
@@ -81,38 +82,48 @@ public class ModerationListener extends CoreHelpers {
 		commands.put("!about", (evt, msg) -> about(evt));
 		commands.put("!link-meetup", (evt, msg) -> linkMeetup(evt));
 	}
-	
+
 	private void checkIfVerifyingMeetup(User usr, String msg) {
 		long userId = usr.getId().asLong();
 		long channelId = usr.getPrivateChannel().block().getId().asLong();
-		
-		if(MeetupLinker.isQueued(userId)) {
+		if (SeleniumDriver.getInstance().isLocked()) {
+			logMessage("User tried to verify identity but browser is currently locked");
+			sendPrivateMessage(channelId,
+					"The browser is currently busy at the moment, try again in a short while! Can't get the staff these days...");
+			return;
+		}
+		if (MeetupLinker.isQueued(userId)) {
 			String code = MeetupLinker.getUsersCode(userId);
-			if(msg.startsWith("https://www.meetup.com/members/")){
+			if (msg.startsWith("https://www.meetup.com/members/")) {
 				long meetupId = SeleniumDriver.getInstance().sendCode(msg, code);
 				MeetupLinker.addMeetupId(userId, meetupId);
-			} else if(msg.equals(code)) {
+				sendPrivateMessage(channelId,
+						"Cool! I've sent you a message on Meetup, just respond here with the code.");
+			} else if (msg.equals(code)) {
+				logMessage("User " + userId + " was successfully added to Meetup Verified list.");
 				MeetupLinker.verifyUser(userId);
-				sendPrivateMessage(channelId, "Hey! You have been successfully verified! Here, have a role on the house!");
-				usr.asMember(Snowflake.of(SERVER)).block().addRole(Snowflake.of(MEETUP_VERIFIED));
+				sendPrivateMessage(channelId,
+						"Hey! You have been successfully verified! Here, have a role on the house!");
+				usr.asMember(Snowflake.of(SERVER)).block().addRole(Snowflake.of(MEETUP_VERIFIED)).block();
 			} else {
-				sendPrivateMessage(channelId, "Hi! You appear to have entered something other than the code or a valid meetup URL!");
+				sendPrivateMessage(channelId,
+						"Hi! You appear to have entered something other than the code or a valid meetup URL!");
 			}
 		}
 	}
-	
+
 	private void linkMeetup(MessageCreateEvent event) {
 		Member usr = event.getMember().get();
 		long usrId = usr.getId().asLong();
 		long channelId = usr.getPrivateChannel().block().getId().asLong();
 		boolean alreadyQueued = MeetupLinker.queueUser(usrId, RandomStringUtils.randomAlphanumeric(5));
-		if(alreadyQueued)
+		if (alreadyQueued)
 			return;
 		sendPrivateMessage(channelId, "Hi there! If you want to link your account to meetup, "
 				+ "please respond with your user profile URL in full which should look "
-				+ "something like this https://www.meetup.com/members/343387847/"+
-				"\n\nYour privacy settings must be set to allow other members to message you so I can send you the code. This only needs to be done once!");
-		
+				+ "something like this https://www.meetup.com/members/343387847/"
+				+ "\n\nYour privacy settings must be set to allow other members to message you so I can send you the code. This only needs to be done once!");
+
 	}
 
 	private void verify(MessageCreateEvent event, String message) {

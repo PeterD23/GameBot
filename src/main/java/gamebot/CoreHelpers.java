@@ -17,6 +17,7 @@ public class CoreHelpers {
 	protected long CONSOLE = 731604070573408348L;
 	protected long SERVER = 731597823640076319L;
 	protected long BOT_ID = 731598251437981717L;
+	protected long LOG = 902582146437349456L;
 	
 	protected long MUSIC = 797063557341773834L;
 
@@ -31,7 +32,7 @@ public class CoreHelpers {
 			spec.setUsername("Game Bot");
 		}).block();
 	}
-
+	
 	protected Guild getGuild() {
 		return cli.getGuildById(Snowflake.of(SERVER)).block();
 	}
@@ -55,10 +56,15 @@ public class CoreHelpers {
 	protected void editMessage(long channelId, String messageId, String newMessage) {
 		getChannel(channelId).getMessageById(Snowflake.of(messageId)).block().edit(spec -> spec.setContent(newMessage))
 				.block();
+		logMessage("Editing message ID "+messageId+" with String of length "+newMessage.length());
 	}
 
 	protected void deleteMessage(long channelId, String messageId) {
 		getChannel(channelId).getMessageById(Snowflake.of(messageId));
+	}
+	
+	protected void logMessage(String message) {
+		getChannel(LOG).createMessage(message).block().getId().asString();
 	}
 
 	protected String sendMessage(long channelId, String message) {
