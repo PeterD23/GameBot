@@ -2,7 +2,6 @@ package gamebot;
 
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 import discord4j.core.DiscordClient;
@@ -12,6 +11,7 @@ import discord4j.core.event.domain.lifecycle.ReadyEvent;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.event.domain.message.ReactionAddEvent;
 import discord4j.core.event.domain.message.ReactionRemoveEvent;
+import meetup.EventManager;
 import reactor.core.publisher.Mono;
 
 public class GameBot {
@@ -21,12 +21,12 @@ public class GameBot {
 	private RoleChannelManagementListener roleListener;
 	private ModerationListener moderationListener;
 	private IntervalListener intervalListener;
-	
+
 	public static void main(String[] args) {
 		GameBot bot = new GameBot();
 		bot.init(args);
 	}
-	
+
 	public void init(String[] args) {
 		try {
 			if (args.length == 0)
@@ -34,23 +34,24 @@ public class GameBot {
 			roleListener = new RoleChannelManagementListener();
 			moderationListener = new ModerationListener();
 			intervalListener = new IntervalListener();
-			
+
 			CLIENT = new DiscordClientBuilder(args[0]).build();
 			buildReadyEvent();
 			buildMemberJoinEvent();
 			buildMessageCreateEvent();
 			buildReactionAddEvent();
 			buildReactionRemoveEvent();
+			EventManager.init();
 			buildInterval();
 			SpotifyHelpers.init(args[1], args[2]);
-			
+
 			CLIENT.login().block();
-			
+
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
-	
+
 	private void buildReadyEvent() {
 		CLIENT.getEventDispatcher().on(ReadyEvent.class).flatMap(ready -> {
 			roleListener.onReady(ready);
@@ -59,10 +60,10 @@ public class GameBot {
 			return Mono.empty();
 		}).subscribe();
 	}
-	
+
 	private void buildMemberJoinEvent() {
-		CLIENT.getEventDispatcher().on(MemberJoinEvent.class).flatMap(event -> Mono
-				.fromRunnable(() -> moderationListener.newUser(event)).onErrorResume(t -> Mono.empty()))
+		CLIENT.getEventDispatcher().on(MemberJoinEvent.class).flatMap(
+				event -> Mono.fromRunnable(() -> moderationListener.newUser(event)).onErrorResume(t -> Mono.empty()))
 				.subscribe();
 	}
 
@@ -76,26 +77,31 @@ public class GameBot {
 			return Mono.empty();
 		})).subscribe();
 	}
-	
+
 	private void buildReactionAddEvent() {
 		CLIENT.getEventDispatcher().on(ReactionAddEvent.class)
-		.flatMap(event -> Mono.fromRunnable(() -> roleListener.onReact(event)).onErrorResume(t -> {
-			t.printStackTrace();
-			return Mono.empty();
-		})).subscribe();
+				.flatMap(event -> Mono.fromRunnable(() -> roleListener.onReact(event)).onErrorResume(t -> {
+					t.printStackTrace();
+					return Mono.empty();
+				})).subscribe();
 	}
-	
+
 	private void buildReactionRemoveEvent() {
 		CLIENT.getEventDispatcher().on(ReactionRemoveEvent.class)
-		.flatMap(event -> Mono.fromRunnable(() -> roleListener.onUnreact(event)).onErrorResume(t -> {
-			t.printStackTrace();
-			return Mono.empty();
-		})).subscribe();
+				.flatMap(event -> Mono.fromRunnable(() -> roleListener.onUnreact(event)).onErrorResume(t -> {
+					t.printStackTrace();
+					return Mono.empty();
+				})).subscribe();
 	}
-	
+
 	private void buildInterval() {
-		ScheduledExecutorService scheduledExecutorService =
-		        Executors.newScheduledThreadPool(1);	
-		scheduledExecutorService.scheduleAtFixedRate(() -> intervalListener.tick(), 0, 1, TimeUnit.MINUTES);
+		ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(1);
+		scheduledExecutorService.scheduleAtFixedRate(() -> {
+			try {
+				intervalListener.tick();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}, 0, 1, TimeUnit.MINUTES);
 	}
 }
