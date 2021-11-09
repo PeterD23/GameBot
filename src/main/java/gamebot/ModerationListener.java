@@ -1,5 +1,8 @@
 package gamebot;
 
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Random;
 
@@ -8,14 +11,20 @@ import org.apache.commons.lang.RandomStringUtils;
 import discord4j.core.event.domain.guild.MemberJoinEvent;
 import discord4j.core.event.domain.lifecycle.ReadyEvent;
 import discord4j.core.event.domain.message.MessageCreateEvent;
+import discord4j.core.event.domain.message.ReactionAddEvent;
+import discord4j.core.event.domain.message.ReactionRemoveEvent;
 import discord4j.core.object.entity.Channel;
 import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.Message;
 import discord4j.core.object.entity.PrivateChannel;
 import discord4j.core.object.entity.User;
+import discord4j.core.object.reaction.ReactionEmoji;
 import discord4j.core.object.util.Snowflake;
 import meetup.MeetupLinker;
 import meetup.SeleniumDriver;
+import onlineevent.EventManager;
+import onlineevent.OnlineEvent;
+import onlineevent.Poll;
 import reactor.util.Logger;
 import reactor.util.Loggers;
 
@@ -26,6 +35,8 @@ public class ModerationListener extends CoreHelpers {
 	private long MEETUP_VERIFIED = 902260032945651774L;
 	private HashMap<String, UserCommand> commands = new HashMap<>();
 
+	private LocalDateTime restrictedPoll = LocalDateTime.now();
+	
 	public void onReady(ReadyEvent event) {
 		init(event);
 		initialiseCommands();
@@ -58,6 +69,56 @@ public class ModerationListener extends CoreHelpers {
 			sendMessage(MUSIC, "https://c.tenor.com/1S9zA-EMU4YAAAAC/stay-out.gif");
 		}
 	}
+	
+	public void onReact(ReactionAddEvent event) {
+		if (Utils.isTestingMode())
+			return;
+		
+		Member usr = event.getMember().get();
+		if (usr.isBot())
+			return;
+
+		if (event.getChannelId().asLong() == EVENTS) {
+			ArrayList<OnlineEvent> events = EventManager.getEvents();
+			Message msg = event.getMessage().block();		
+			OnlineEvent online = events.stream().filter(p -> p.getMessageId() == msg.getId().asLong()).findFirst().orElse(null);
+			if(online == null) {
+				logMessage("ERROR: An event message was reacted to but with no associated event.");
+				return;
+			}
+			online.addAttendee(usr.getMention());
+			Message message = getMessage(EVENTS, online.getMessageId());
+			message.edit(spec -> {
+				spec.setContent(getRoleByName("Verified").getMention() +"\n\n"+online.toString());
+			}).block();
+			EventManager.saveEventData();
+		}
+	}
+	
+	public void onUnreact(ReactionRemoveEvent event) {
+		if (Utils.isTestingMode())
+			return;
+		
+		User usr = event.getUser().block();
+		if (usr.isBot())
+			return;
+
+		if (event.getChannelId().asLong() == EVENTS) {
+			ArrayList<OnlineEvent> events = EventManager.getEvents();
+			Message msg = event.getMessage().block();
+			OnlineEvent online = events.stream().filter(p -> p.getMessageId() == msg.getId().asLong()).findFirst().orElse(null);
+			if(online == null) {
+				logMessage("ERROR: An event message was reacted to but with no associated event.");
+				return;
+			}
+			online.removeAttendee(usr.getMention());
+			Message message = getMessage(EVENTS, online.getMessageId());
+			message.edit(spec -> {
+				spec.setContent(getRoleByName("Verified").getMention() +"\n\n"+online.toString());
+			}).block();
+			EventManager.saveEventData();
+		}
+	}
 
 	public void newUser(MemberJoinEvent event) {
 		if (Utils.isTestingMode())
@@ -81,8 +142,61 @@ public class ModerationListener extends CoreHelpers {
 				(evt, msg) -> introduceYourself(evt.getMember().get(), evt.getMessage().getChannelId().asLong()));
 		commands.put("!about", (evt, msg) -> about(evt));
 		commands.put("!link-meetup", (evt, msg) -> linkMeetup(evt));
+		commands.put("!poll", (evt, msg) -> createPoll(evt, msg));
+		commands.put("!event", (evt, msg) -> createEvent(evt, msg));
+		commands.put("!help", (evt, msg) -> help(evt, msg));	
+	}
+	
+	private void createPoll(MessageCreateEvent event, String message) {
+		Member usr = event.getMember().get();
+		long chn = event.getMessage().getChannelId().asLong();
+		Duration time = checkPollRestricted();		
+		if(!time.isNegative()) {
+			sendMessage(chn, "Hey, sorry but you'll need to wait until you can create another poll! You should be allowed to create another in "+ time.toMinutes() + " minutes");
+			return;
+		}
+		Poll poll = new Poll(message);
+		String id = sendMessage(chn, getRoleByName("Verified").getMention() + "\n\n"+ poll.printPoll());
+		Message pollMsg = getMessage(chn, new Long(id));
+		pollMsg.pin().block();
+		poll.react(pollMsg);
+		restrictPoll(usr, LocalDateTime.now().plusHours(1));
 	}
 
+	private void createEvent(MessageCreateEvent event, String message) {
+		Member usr = event.getMember().get();
+		long chn = event.getMessage().getChannelId().asLong();
+		Duration time = checkPollRestricted();		
+		if(!time.isNegative()) {
+			sendMessage(chn, "Hey, sorry but you'll need to wait until you can create another event! You should be allowed to create another in "+ time.toMinutes() + " minutes");
+			return;
+		}
+		OnlineEvent onlineEvent = new OnlineEvent(usr.getMention(), message);
+		if(!onlineEvent.isValidEvent()) {
+			sendMessage(chn, "Sorry about that, I was unable to create the event :( Your time formatting should be yyyy-MM-dd HH:mm.");
+			return;
+		} 
+		String messageId = sendMessage(EVENTS, getRoleByName("Verified").getMention() +"\n\n"+ onlineEvent.toString());
+		onlineEvent.addMessageId(new Long(messageId));
+		Message eventMsg = getMessage(chn, new Long(messageId));
+		eventMsg.pin().block();
+		eventMsg.addReaction(ReactionEmoji.unicode("\u2705")).block();
+		EventManager.add(onlineEvent);
+		restrictPoll(usr, LocalDateTime.now().plusHours(1));
+		sendMessage(chn, "There you go "+usr.getMention() + ", I've created a new event for you! ^_^");
+	}
+	
+	private void help(MessageCreateEvent event, String msg) {
+		long chn = event.getMessage().getChannelId().asLong();
+		if(msg.contains("poll")) {
+			sendMessage(chn, "To create a poll, type !poll followed by the description of the poll. By default it will use Yes/No, but if you want custom answers define as so: (Yes|No|Other|Aliens|Cheese)");
+		} else if(msg.contains("event")) {
+			sendMessage(chn, "To create an event, type !event followed by the following format, using | as delimiters: TITLE | DESCRIPTION | DATETIME(yyyy-MM-dd HH:mm)");
+		} else {
+			sendMessage(chn, "Hi there! You can use the following commands: !hello, !about, !link-meetup, !poll, !event");
+		}
+	}
+	
 	private void checkIfVerifyingMeetup(User usr, String msg) {
 		long userId = usr.getId().asLong();
 		long channelId = usr.getPrivateChannel().block().getId().asLong();
@@ -161,5 +275,19 @@ public class ModerationListener extends CoreHelpers {
 				"Hi! I'm Game Bot, and I help out managing peoples roles on the server! All my inner workings were done by "
 						+ getUserById(97036843924598784L).getMention()
 						+ " so if at any point I stop working, please give him a kick!");
+	}
+	
+	protected void restrictPoll(Member usr, LocalDateTime time) {
+		if(isAdmin(usr))
+			return;
+		restrictedPoll = time;
+	}
+	
+	protected void resetPoll() {
+		restrictedPoll = LocalDateTime.now();
+	}
+	
+	protected Duration checkPollRestricted() {
+		return Duration.between(LocalDateTime.now(), restrictedPoll);
 	}
 }

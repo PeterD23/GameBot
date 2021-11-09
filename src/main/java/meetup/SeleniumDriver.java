@@ -70,7 +70,7 @@ public class SeleniumDriver {
 	}
 
 	private ChromeOptions setHeadlessMode() {
-		return new ChromeOptions().addArguments("--headless","--window-size=1920,1080");
+		return new ChromeOptions().addArguments("--headless", "--window-size=1920,1080");
 	}
 
 	public boolean login() {
@@ -101,10 +101,10 @@ public class SeleniumDriver {
 			Element("//textarea[contains(@class, 'composeBox-textArea')]").click();
 			Element("//textarea[contains(@class, 'composeBox-textArea')]").sendKeys(code);
 			Element("//button[contains(@class, 'composeBox-sendButton')]").click();
-			unlock();
 		} catch (Exception e) {
-			unlock();
 			return 0;
+		} finally {
+			unlock();
 		}
 		return meetupId;
 	}
@@ -122,33 +122,39 @@ public class SeleniumDriver {
 				log.info("Found " + i + ": " + name + ", " + link);
 				attendeePair.add(new Pair<>(name, link));
 			}
-			unlock();
 			return attendeePair;
 		} catch (Exception e) {
-			unlock();
 			return new ArrayList<>();
+		} finally {
+			unlock();
 		}
 	}
 
 	public ArrayList<MeetupEvent> returnEventData() {
 		lock();
 		ArrayList<MeetupEvent> eventData = new ArrayList<>();
-		webDriver.get(meetupUrl);
-		ArrayList<WebElement> cards = Elements(baseXPath);
-		ArrayList<String> urls = new ArrayList<>();
-		for (WebElement card : cards) {
-			log.info("Adding card to list...");
-			urls.add(getEventUrl(card));
-		}
-		for (String url : urls) {
-			log.info("Resolving URL " + url);
-			webDriver.get(url);
-			eventData.add(compileEvent(url));
+		try {		
 			webDriver.get(meetupUrl);
-			log.info("Successfully compiled event");
+			ArrayList<WebElement> cards = Elements(baseXPath);
+			ArrayList<String> urls = new ArrayList<>();
+			for (WebElement card : cards) {
+				log.info("Adding card to list...");
+				urls.add(getEventUrl(card));
+			}
+			for (String url : urls) {
+				log.info("Resolving URL " + url);
+				webDriver.get(url);
+				eventData.add(compileEvent(url));
+				webDriver.get(meetupUrl);
+				log.info("Successfully compiled event");
+			}
+			return eventData;
+		} catch (Exception e) {
+			log.error("Failed to compile full event data");
+			return eventData;
+		} finally {
+			unlock();
 		}
-		unlock();
-		return eventData;
 	}
 
 	private MeetupEvent compileEvent(String eventUrl) {

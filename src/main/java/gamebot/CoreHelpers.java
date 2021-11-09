@@ -5,12 +5,15 @@ import discord4j.core.event.domain.lifecycle.ReadyEvent;
 import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.GuildEmoji;
 import discord4j.core.object.entity.Member;
+import discord4j.core.object.entity.Message;
 import discord4j.core.object.entity.PrivateChannel;
 import discord4j.core.object.entity.Role;
 import discord4j.core.object.entity.TextChannel;
 import discord4j.core.object.util.Permission;
 import discord4j.core.object.util.PermissionSet;
 import discord4j.core.object.util.Snowflake;
+import reactor.util.Logger;
+import reactor.util.Loggers;
 
 public class CoreHelpers {
 
@@ -20,18 +23,21 @@ public class CoreHelpers {
 	protected long LOG = 902582146437349456L;
 	
 	protected long MUSIC = 797063557341773834L;
+	protected long EVENTS = 907696207508406342L;
 
 	private DiscordClient cli;
 
 	private PermissionSet readSend = PermissionSet.of(Permission.VIEW_CHANNEL, Permission.SEND_MESSAGES,
 			Permission.READ_MESSAGE_HISTORY);
-
+	
+	private static Logger log = Loggers.getLogger("logger");
+	
 	protected void init(ReadyEvent event) {
 		cli = event.getClient();
 		cli.edit(spec -> {
 			spec.setUsername("Game Bot");
 		}).block();
-	}
+	}	
 	
 	protected Guild getGuild() {
 		return cli.getGuildById(Snowflake.of(SERVER)).block();
@@ -41,6 +47,10 @@ public class CoreHelpers {
 		return getGuild().getEmojis().filter(p -> p.getName().equals(name)).next().block();
 	}
 
+	protected boolean isAdmin(Member usr) {
+		return usr.getRoles().any(p -> p.getName().equals("Admin")).block();
+	}
+	
 	protected Role getRoleByName(String name) {
 		return getGuild().getRoles().filter(p -> p.getName().equals(name)).next().block();
 	}
@@ -69,6 +79,10 @@ public class CoreHelpers {
 
 	protected String sendMessage(long channelId, String message) {
 		return getChannel(channelId).createMessage(message).block().getId().asString();
+	}
+	
+	protected Message getMessage(long channelId, long messageId) {
+		return getChannel(channelId).getMessageById(Snowflake.of(messageId)).block();
 	}
 	
 	protected String sendPrivateMessage(long channelId, String message) {

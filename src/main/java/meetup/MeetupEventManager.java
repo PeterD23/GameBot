@@ -13,7 +13,7 @@ import org.apache.commons.io.FileUtils;
 import reactor.util.Logger;
 import reactor.util.Loggers;
 
-public class EventManager {
+public class MeetupEventManager {
 
 	private static Logger log = Loggers.getLogger("logger");
 	private static ArrayList<Tuple<String, String, String>> events;
