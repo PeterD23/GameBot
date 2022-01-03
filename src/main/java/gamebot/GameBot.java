@@ -5,10 +5,10 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import discord4j.core.DiscordClient;
-import discord4j.core.DiscordClientBuilder;
 import discord4j.core.event.domain.guild.MemberJoinEvent;
 import discord4j.core.event.domain.lifecycle.ReadyEvent;
 import discord4j.core.event.domain.message.MessageCreateEvent;
+import discord4j.core.event.domain.message.MessageUpdateEvent;
 import discord4j.core.event.domain.message.ReactionAddEvent;
 import discord4j.core.event.domain.message.ReactionRemoveEvent;
 import meetup.MeetupEventManager;
@@ -36,10 +36,11 @@ public class GameBot {
 			moderationListener = new ModerationListener();
 			intervalListener = new IntervalListener();
 
-			CLIENT = new DiscordClientBuilder(args[0]).build();
+			CLIENT = DiscordClient.create(args[0]);
 			buildReadyEvent();
 			buildMemberJoinEvent();
 			buildMessageCreateEvent();
+			buildMessageUpdateEvent();
 			buildReactionAddEvent();
 			buildReactionRemoveEvent();
 			MeetupEventManager.init();
@@ -79,6 +80,16 @@ public class GameBot {
 			return Mono.empty();
 		})).subscribe();
 	}
+	
+	private void buildMessageUpdateEvent() {
+		CLIENT.getEventDispatcher().on(MessageUpdateEvent.class).flatMap(event -> Mono.fromRunnable(() -> {
+			moderationListener.onEdit(event);
+		}).onErrorResume(t -> {
+			t.printStackTrace();
+			return Mono.empty();
+		})).subscribe();
+	}
+	
 
 	private void buildReactionAddEvent() {
 		CLIENT.getEventDispatcher().on(ReactionAddEvent.class).flatMap(event -> Mono.fromRunnable(() -> {

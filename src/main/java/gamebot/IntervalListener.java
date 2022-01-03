@@ -1,5 +1,6 @@
 package gamebot;
 
+import java.time.DayOfWeek;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -182,6 +183,10 @@ public class IntervalListener extends CoreHelpers {
 	private void recommendSong() {
 		log.info("Scheduled recommendation for music");
 		logMessage("Time is 12 pm, recommending a song from Spotify");
+		if(LocalDateTime.now().getDayOfWeek() == DayOfWeek.FRIDAY) {
+			sendMessage(MUSIC, "https://open.spotify.com/track/79ozNtJ4aqVaAav0bqXpji");
+			return;
+		}
 		String song = SpotifyHelpers.recommendSong(playlist);
 		if (song.length() > 0) {
 			sendMessage(MUSIC, song);
