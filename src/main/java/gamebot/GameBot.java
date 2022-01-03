@@ -5,13 +5,14 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import discord4j.core.DiscordClient;
-import discord4j.core.DiscordClientBuilder;
 import discord4j.core.event.domain.guild.MemberJoinEvent;
 import discord4j.core.event.domain.lifecycle.ReadyEvent;
 import discord4j.core.event.domain.message.MessageCreateEvent;
+import discord4j.core.event.domain.message.MessageUpdateEvent;
 import discord4j.core.event.domain.message.ReactionAddEvent;
 import discord4j.core.event.domain.message.ReactionRemoveEvent;
-import meetup.EventManager;
+import meetup.MeetupEventManager;
+import onlineevent.EventManager;
 import reactor.core.publisher.Mono;
 
 public class GameBot {
@@ -35,12 +36,14 @@ public class GameBot {
 			moderationListener = new ModerationListener();
 			intervalListener = new IntervalListener();
 
-			CLIENT = new DiscordClientBuilder(args[0]).build();
+			CLIENT = DiscordClient.create(args[0]);
 			buildReadyEvent();
 			buildMemberJoinEvent();
 			buildMessageCreateEvent();
+			buildMessageUpdateEvent();
 			buildReactionAddEvent();
 			buildReactionRemoveEvent();
+			MeetupEventManager.init();
 			EventManager.init();
 			buildInterval();
 			SpotifyHelpers.init(args[1], args[2]);
@@ -77,21 +80,35 @@ public class GameBot {
 			return Mono.empty();
 		})).subscribe();
 	}
+	
+	private void buildMessageUpdateEvent() {
+		CLIENT.getEventDispatcher().on(MessageUpdateEvent.class).flatMap(event -> Mono.fromRunnable(() -> {
+			moderationListener.onEdit(event);
+		}).onErrorResume(t -> {
+			t.printStackTrace();
+			return Mono.empty();
+		})).subscribe();
+	}
+	
 
 	private void buildReactionAddEvent() {
-		CLIENT.getEventDispatcher().on(ReactionAddEvent.class)
-				.flatMap(event -> Mono.fromRunnable(() -> roleListener.onReact(event)).onErrorResume(t -> {
-					t.printStackTrace();
-					return Mono.empty();
-				})).subscribe();
+		CLIENT.getEventDispatcher().on(ReactionAddEvent.class).flatMap(event -> Mono.fromRunnable(() -> {
+			roleListener.onReact(event);
+			moderationListener.onReact(event);
+		}).onErrorResume(t -> {
+			t.printStackTrace();
+			return Mono.empty();
+		})).subscribe();
 	}
 
 	private void buildReactionRemoveEvent() {
-		CLIENT.getEventDispatcher().on(ReactionRemoveEvent.class)
-				.flatMap(event -> Mono.fromRunnable(() -> roleListener.onUnreact(event)).onErrorResume(t -> {
-					t.printStackTrace();
-					return Mono.empty();
-				})).subscribe();
+		CLIENT.getEventDispatcher().on(ReactionRemoveEvent.class).flatMap(event -> Mono.fromRunnable(() -> {
+			roleListener.onUnreact(event);
+			moderationListener.onUnreact(event);
+		}).onErrorResume(t -> {
+			t.printStackTrace();
+			return Mono.empty();
+		})).subscribe();
 	}
 
 	private void buildInterval() {
@@ -102,6 +119,6 @@ public class GameBot {
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
-		}, 0, 1, TimeUnit.MINUTES);
+		}, 1, 1, TimeUnit.MINUTES);
 	}
 }

@@ -3,10 +3,8 @@ package gamebot;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -17,20 +15,14 @@ import discord4j.core.event.domain.lifecycle.ReadyEvent;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.event.domain.message.ReactionAddEvent;
 import discord4j.core.event.domain.message.ReactionRemoveEvent;
-import discord4j.core.object.PermissionOverwrite;
 import discord4j.core.object.entity.Channel;
-import discord4j.core.object.entity.Guild;
-import discord4j.core.object.entity.GuildEmoji;
 import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.Message;
 import discord4j.core.object.entity.PrivateChannel;
-import discord4j.core.object.entity.Role;
 import discord4j.core.object.entity.TextChannel;
 import discord4j.core.object.entity.User;
 import discord4j.core.object.reaction.ReactionEmoji;
 import discord4j.core.object.reaction.ReactionEmoji.Custom;
-import discord4j.core.object.util.Permission;
-import discord4j.core.object.util.PermissionSet;
 import discord4j.core.object.util.Snowflake;
 import meetup.MeetupLinker;
 import reactor.util.Logger;
@@ -47,9 +39,6 @@ public class RoleChannelManagementListener extends CoreHelpers {
 
 	private HashMap<String, Command> commands = new HashMap<>();
 	private HashMap<String, Long> genreRoles = new HashMap<>();
-
-	private PermissionSet readSend = PermissionSet.of(Permission.VIEW_CHANNEL, Permission.SEND_MESSAGES,
-			Permission.READ_MESSAGE_HISTORY);
 
 	public void onReady(ReadyEvent event) {
 		init(event);
@@ -123,7 +112,7 @@ public class RoleChannelManagementListener extends CoreHelpers {
 					"Testing mode is now enabled. You can now run a local copy of the bot and have it perform actions.");
 		});
 	}
-
+	
 	private String trimCommand(String string) {
 		String[] data = string.split("\\s");
 		String[] trimmed = Arrays.copyOfRange(data, 1, data.length);
@@ -148,7 +137,7 @@ public class RoleChannelManagementListener extends CoreHelpers {
 		Message msg = chn.getLastMessage().block();
 		Iterator<?> it = genreRoles.entrySet().iterator();
 		while (it.hasNext()) {
-			Map.Entry pair = (Map.Entry) it.next();
+			Map.Entry<?,?> pair = (Map.Entry<?,?>) it.next();
 			msg.addReaction(ReactionEmoji.custom(getEmojiByName((String) pair.getKey()))).block();
 		}
 	}

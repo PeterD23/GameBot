@@ -1,5 +1,8 @@
 package gamebot;
 
+import java.time.DayOfWeek;
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -12,11 +15,13 @@ import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.Message;
 import discord4j.core.object.entity.PrivateChannel;
 import discord4j.core.object.util.Snowflake;
-import meetup.EventManager;
+import meetup.MeetupEventManager;
 import meetup.MeetupEvent;
 import meetup.MeetupLinker;
 import meetup.Pair;
 import meetup.SeleniumDriver;
+import onlineevent.EventManager;
+import onlineevent.OnlineEvent;
 import reactor.util.Logger;
 import reactor.util.Loggers;
 
@@ -109,13 +114,13 @@ public class IntervalListener extends CoreHelpers {
 			if(event.toString().equals("err"))
 				continue;
 			String message = prependData + event.toString() + convertAttendees(event.getID());
-			String possibleId = EventManager.hasEvent(event);
+			String possibleId = MeetupEventManager.hasEvent(event);
 			if(possibleId != "") {
 				editMessage(MEETUP, possibleId, message);
 			} else {
 				String messageId = sendMessage(MEETUP, message);
 				getChannel(MEETUP).getMessageById(Snowflake.of(new Long(messageId))).block().pin().block();
-				EventManager.addEvent(event.getID(), messageId, event.getDate());
+				MeetupEventManager.addEvent(event.getID(), messageId, event.getDate());
 				logMessage("Added new pinned event to Event List");
 			}
 		}
@@ -142,12 +147,13 @@ public class IntervalListener extends CoreHelpers {
 		}
 		log.info("IntervalListener is currently ticking");
 
+		handleReminders();
 		LocalTime time = LocalTime.now();
 		if (time.getHour() == 12 && time.getMinute() == 0) {			
 			recommendSong();
 		} else if(time.getMinute() % 15 == 0) {
 			fetchEventData();
-			ArrayList<String> pastEvents = EventManager.scheduleMessagesForDeletion();
+			ArrayList<String> pastEvents = MeetupEventManager.scheduleMessagesForDeletion();
 			for(String s : pastEvents) {
 				log.info("Deleting message ID "+s);
 				logMessage("Deleting message ID"+s+" which is an expired event");
@@ -155,10 +161,32 @@ public class IntervalListener extends CoreHelpers {
 			}
 		}	
 	}
+	
+	private void handleReminders() {
+		ArrayList<OnlineEvent> events = EventManager.getEvents();
+		log.info("Handling reminders... Event stack is "+events.size());
+		for(OnlineEvent event : events) {
+			LocalDateTime date = event.getDateTime();
+			log.info("Duration of event from now is "+Duration.between(LocalDateTime.now(), date).toMinutes());
+			if(Duration.between(LocalDateTime.now(), date).toMinutes() < 30 && !event.checkHalfHourReminder()){		
+				event.triggerHalfHourReminder();
+				ArrayList<Long> attendees = event.getAttendeesToDM();
+				logMessage("Sending reminders to "+attendees.size()+" people for events");
+				for(long attendee : attendees) {
+					long privateChannel = getUserById(attendee).getPrivateChannel().block().getId().asLong();
+					sendPrivateMessage(privateChannel, "You have an event upcoming in less than 30 minutes, check the online events channel for more details!");
+				}
+			}
+		}
+	}
 
 	private void recommendSong() {
 		log.info("Scheduled recommendation for music");
 		logMessage("Time is 12 pm, recommending a song from Spotify");
+		if(LocalDateTime.now().getDayOfWeek() == DayOfWeek.FRIDAY) {
+			sendMessage(MUSIC, "https://open.spotify.com/track/79ozNtJ4aqVaAav0bqXpji");
+			return;
+		}
 		String song = SpotifyHelpers.recommendSong(playlist);
 		if (song.length() > 0) {
 			sendMessage(MUSIC, song);
