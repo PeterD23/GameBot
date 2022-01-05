@@ -4,14 +4,16 @@ let hltbService = new hltb.HowLongToBeatService();
 const express = require('express');
 const router = express.Router();
 
-router.post('/search', async (req, res) => {
+router.post('/search', async(req, res) => {
 	try {
-		const { search: searchTerm } = req.body;
+		
+		const {search} = req.body;
+	
 		if (!search) {
-			return res.status(400).json({ error: 'No searchTerm given.' })
+			return res.status(400).json({ error: 'No search given.' })
 		}
 
-		const result = await hltbService.search(searchTerm);
+		const result = await hltbService.search(search);
 
 		res.json(result);
 
