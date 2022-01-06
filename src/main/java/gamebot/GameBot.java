@@ -20,7 +20,7 @@ public class GameBot {
 	public static DiscordClient CLIENT;
 
 	private RoleChannelManagementListener roleListener;
-	private ModerationListener moderationListener;
+	private UserListener moderationListener;
 	private IntervalListener intervalListener;
 
 	public static void main(String[] args) {
@@ -33,7 +33,7 @@ public class GameBot {
 			if (args.length == 0)
 				throw new IllegalArgumentException("Please enter a client key.");
 			roleListener = new RoleChannelManagementListener();
-			moderationListener = new ModerationListener();
+			moderationListener = new UserListener();
 			intervalListener = new IntervalListener();
 
 			CLIENT = DiscordClient.create(args[0]);

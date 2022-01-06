@@ -77,6 +77,7 @@ public class CoreHelpers {
 	}
 
 	protected void logMessage(String message) {
+		log.info(message);
 		getChannel(LOG).createMessage(message).block().getId().asString();
 	}
 
@@ -88,8 +89,7 @@ public class CoreHelpers {
 		char ps = File.separatorChar;
 		String filePath = System.getProperty("user.home") + ps + "Pictures" + ps + imageName;
 		logMessage("Looking for "+filePath);
-		try {
-			FileInputStream fs = new FileInputStream(filePath);
+		try (FileInputStream fs = new FileInputStream(filePath)) {
 			String messageId = getChannel(channelId).createMessage(spec -> {
 				spec.addFile(imageName, fs);
 			}).block().getId().asString();
