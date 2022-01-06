@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -13,7 +14,18 @@ import java.util.List;
 import java.util.Random;
 
 import org.apache.commons.lang.RandomStringUtils;
+import org.apache.http.HttpEntity;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.ContentType;
+import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.util.EntityUtils;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.collect.Iterables;
 import com.google.common.io.Files;
 
 import discord4j.core.event.domain.guild.MemberJoinEvent;
@@ -37,7 +49,7 @@ import onlineevent.Poll;
 import reactor.util.Logger;
 import reactor.util.Loggers;
 
-public class ModerationListener extends CoreHelpers {
+public class UserListener extends CoreHelpers {
 
 	private static Logger log = Loggers.getLogger("logger");
 	private long INTRODUCTIONS = 732247266173124648L;
@@ -178,27 +190,76 @@ public class ModerationListener extends CoreHelpers {
 		commands.put("!watch-poll", (evt, msg) -> watch(evt, "Poll"));
 		commands.put("!watch-event", (evt, msg) -> watch(evt, "Event"));
 		commands.put("!selfie", (evt, msg) -> selfie(evt));
+		commands.put("!hltb", (evt, msg) -> howLongToBeat(evt, msg));
 	}
-	
+
+	private void howLongToBeat(MessageCreateEvent event, String game) {
+		JsonNode output = null;
+		try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
+			HttpPost post = new HttpPost("http://localhost:2460/game");
+			String JSON_STRING = "{ \"game\":\"" + game.replace("!hltb", "").trim() + "\" }";
+			HttpEntity stringEntity = new StringEntity(JSON_STRING, ContentType.APPLICATION_JSON);
+			post.setEntity(stringEntity);
+			try (CloseableHttpResponse response = httpClient.execute(post)) {
+				HttpEntity responseEntity = response.getEntity();
+				if (response.getStatusLine().getStatusCode() == 200) {
+					String json = EntityUtils.toString(responseEntity, StandardCharsets.UTF_8);
+					ObjectMapper mapper = Utils.buildObjectMapper();
+					output = mapper.readTree(json);
+				}
+			}
+		} catch (Exception e) {
+			logMessage("HTTP Post failed with Error: " + e.getStackTrace()[0]);
+			e.printStackTrace();
+		}
+		long channel = event.getMessage().getChannelId().asLong();
+		postDataToChannel(output, channel);
+	}
+
+	private void postDataToChannel(JsonNode output, long channelId) {
+		if (output == null) {
+			sendMessage(channelId, "An error occurred. Please type a valid game!");
+			return;
+		}
+		String name = output.findValue("name").asText();
+		String timeToBeatMain = "Time to Beat Campaign: " + output.findValue("gameplayMain").asText() + " Hours";
+		String timeToBeatExtra = "Time to Beat Extras: " + output.findValue("gameplayMainExtra").asText() + " Hours";
+		String timeToBeatCompletion = "Time to 100%: " + output.findValue("gameplayCompletionist").asText() +" Hours";
+		String openCriticScore = "OpenCritic Score: N/A";
+
+		String openCriticName = Iterables.get(output.findValues("name"), 1).asText();
+		logMessage("Comparing Name:'"+name+"' to OpenCritic Name:'"+openCriticName+"'");
+		if (name.equals(openCriticName)) {
+			openCriticScore = "OpenCritic Score: " + output.findValue("medianScore").asText();
+		}
+		String image = name.replaceAll("\\s|\\:|\\,", "").trim().toLowerCase();
+		Utils.downloadJPG("https://howlongtobeat.com" + output.findValue("imageUrl").asText(), image, 100);
+		sendMessage(channelId, "**"+name+"**");
+		embedImage(channelId, image + ".jpg");
+		sendMessage(channelId, Utils.constructMultiLineString(1, timeToBeatMain, timeToBeatExtra, timeToBeatCompletion, openCriticScore));
+	}
+
 	private void watch(MessageCreateEvent event, String type) {
 		long chn = event.getMessage().getChannelId().asLong();
 		String role = type + " Watcher";
 		Member usr = event.getMember().get();
-		if(!hasRole(usr, role)){
+		if (!hasRole(usr, role)) {
 			usr.addRole(getRoleByName(role).getId(), "Requested by user").block();
-			sendMessage(chn, "Hey "+usr.getMention()+" you will now be pinged whenever a new "+type.toLowerCase()+" is created!");
+			sendMessage(chn, "Hey " + usr.getMention() + " you will now be pinged whenever a new " + type.toLowerCase()
+					+ " is created!");
 		} else {
 			usr.removeRole(getRoleByName(role).getId(), "Requested by user").block();
-			sendMessage(chn, "Hey "+usr.getMention()+" you will no longer be pinged whenever a new "+type.toLowerCase()+" is created!");
-		}	
+			sendMessage(chn, "Hey " + usr.getMention() + " you will no longer be pinged whenever a new "
+					+ type.toLowerCase() + " is created!");
+		}
 	}
-	
+
 	private void selfie(MessageCreateEvent event) {
 		long chn = event.getMessage().getChannelId().asLong();
 		executeBash("cd && sudo ./selfie.sh");
 		embedImage(chn, "selfie.jpg");
 	}
-	
+
 	private void embed(MessageCreateEvent event, String image) {
 		long chn = event.getMessage().getChannelId().asLong();
 		embedImage(chn, image.replace("!embed", "").trim());
@@ -215,7 +276,7 @@ public class ModerationListener extends CoreHelpers {
 			return;
 		}
 		Poll poll = new Poll(message);
-		String id = sendMessage(chn, getRoleByName("Poll Watcher").getMention()+ "\n\n"+poll.printPoll());
+		String id = sendMessage(chn, getRoleByName("Poll Watcher").getMention() + "\n\n" + poll.printPoll());
 		Message pollMsg = getMessage(chn, new Long(id));
 		pollMsg.pin().block();
 		poll.react(pollMsg);
@@ -238,7 +299,8 @@ public class ModerationListener extends CoreHelpers {
 					"Sorry about that, I was unable to create the event :( Your time formatting should be yyyy-MM-dd HH:mm.");
 			return;
 		}
-		String messageId = sendMessage(EVENTS, getRoleByName("Event Watcher").getMention()+ "\n\n"+ onlineEvent.toString());
+		String messageId = sendMessage(EVENTS,
+				getRoleByName("Event Watcher").getMention() + "\n\n" + onlineEvent.toString());
 		onlineEvent.addMessageId(new Long(messageId));
 		Message eventMsg = getMessage(chn, new Long(messageId));
 		eventMsg.pin().block();
@@ -266,20 +328,19 @@ public class ModerationListener extends CoreHelpers {
 		long chn = event.getMessage().getChannelId().asLong();
 		if (!isAdmin(event.getMember().get()))
 			return;
-		boolean isWindows = System.getProperty("os.name")
-				  .toLowerCase().startsWith("windows");	
-		if(isWindows) {
+		boolean isWindows = System.getProperty("os.name").toLowerCase().startsWith("windows");
+		if (isWindows) {
 			sendMessage(chn, "I'm running on Windows, dumbass.");
 			return;
 		}
-		String output = executeBash(msg.replace("!bash","").trim());
+		String output = executeBash(msg.replace("!bash", "").trim());
 		sendMessage(chn, output);
 	}
-	
+
 	private String executeBash(String command) {
-		if(!canExecute(command))
+		if (!canExecute(command))
 			return "Command has not been whitelisted.";
-		try {	
+		try {
 			ProcessBuilder builder = new ProcessBuilder();
 			builder.command("sh", "-c", command);
 			builder.directory(new File(System.getProperty("user.home")));
@@ -292,13 +353,13 @@ public class ModerationListener extends CoreHelpers {
 				sb.append(System.getProperty("line.separator"));
 			}
 			int exitCode = process.waitFor();
-			return "```"+sb.toString() + "\nProcess exited with code "+exitCode+"```";
+			return "```" + sb.toString() + "\nProcess exited with code " + exitCode + "```";
 		} catch (IOException | InterruptedException e) {
-			logMessage("Bash script failed to execute: "+e.getStackTrace()[0]);
+			logMessage("Bash script failed to execute: " + e.getStackTrace()[0]);
 			return "Woops haha that didn't work";
 		}
 	}
-	
+
 	private boolean canExecute(String command) {
 		try {
 			List<String> commands = Files.readLines(new File("whitelist"), Charset.defaultCharset());
@@ -307,7 +368,6 @@ public class ModerationListener extends CoreHelpers {
 			return false;
 		}
 	}
-	
 
 	private void checkIfVerifyingMeetup(User usr, String msg) {
 		long userId = usr.getId().asLong();
@@ -363,7 +423,6 @@ public class ModerationListener extends CoreHelpers {
 			sendMessage(channelId, "Hello " + member.getMention() + ", you are already verified :heart:");
 			return;
 		}
-
 		int count = message.split("\\s").length;
 		if (count >= 30) {
 			member.addRole(getRoleByName("Verified").getId()).block();
