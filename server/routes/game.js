@@ -13,9 +13,8 @@ router.post('/', async(req, res) => {
         const gameHltb = await getGameHowLongToBeat(game);
 
         const gameRating = await getGameRating(game);
-
-        res.status(200).json({ hltb: gameHltb, rating: gameRating });
         
+        res.status(200).json({ hltb: gameHltb, rating: gameRating });
     } catch(error) { 
         console.error(error);
         res.status(500).json({ error });

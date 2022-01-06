@@ -18,15 +18,18 @@ const getGameRating = async(game) => {
     const data = await response.json();
 
     if (!response.ok) {
-        throw new Error(JSON.stringify(data));
+        return;
     }
 
     const gameId = data[0].id;
 
     const ratingResponse = await fetch(`http://api.opencritic.com/api/game/${gameId}`)
 
+    if (!ratingResponse.ok) {
+        return;
+    }
+
     const ratingData = await ratingResponse.json();
-    console.log(ratingData);
     return ratingData;
 }
 
