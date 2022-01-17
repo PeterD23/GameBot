@@ -21,6 +21,7 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 public class Utils {
 
 	public static boolean testingMode = false;
+	public static boolean denyAdmins = false;
 	
 	public static Color randomColor() {
 		Random random = new Random();
@@ -50,6 +51,14 @@ public class Utils {
 	
 	public static boolean isTestingMode() {
 		return testingMode;
+	}
+	
+	public static void flipAdminDenial() {
+		denyAdmins = !denyAdmins;
+	}
+	
+	public static boolean adminsDenied() {
+		return denyAdmins;
 	}
 	
 	public static ObjectMapper buildObjectMapper() {
@@ -86,6 +95,12 @@ public class Utils {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+	}
+	
+	@SafeVarargs
+	public static <T> T randomOf(T... types) {
+		Random random = new Random();
+		return types[random.nextInt(types.length)];
 	}
 	
 }

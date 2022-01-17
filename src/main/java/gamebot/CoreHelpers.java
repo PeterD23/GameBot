@@ -51,6 +51,8 @@ public class CoreHelpers {
 	}
 
 	protected boolean isAdmin(Member usr) {
+		if(Utils.adminsDenied())
+			return false;
 		return usr.getRoles().any(p -> p.getName().equals("Admin")).block();
 	}
 

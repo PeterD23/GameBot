@@ -191,6 +191,7 @@ public class UserListener extends CoreHelpers {
 		commands.put("!watch-event", (evt, msg) -> watch(evt, "Event"));
 		commands.put("!selfie", (evt, msg) -> selfie(evt));
 		commands.put("!hltb", (evt, msg) -> howLongToBeat(evt, msg));
+		commands.put("!reset", (evt, msg) -> resetPoll(evt));
 	}
 
 	private void howLongToBeat(MessageCreateEvent event, String game) {
@@ -224,19 +225,20 @@ public class UserListener extends CoreHelpers {
 		String name = output.findValue("name").asText();
 		String timeToBeatMain = "Time to Beat Campaign: " + output.findValue("gameplayMain").asText() + " Hours";
 		String timeToBeatExtra = "Time to Beat Extras: " + output.findValue("gameplayMainExtra").asText() + " Hours";
-		String timeToBeatCompletion = "Time to 100%: " + output.findValue("gameplayCompletionist").asText() +" Hours";
+		String timeToBeatCompletion = "Time to 100%: " + output.findValue("gameplayCompletionist").asText() + " Hours";
 		String openCriticScore = "OpenCritic Score: N/A";
 
 		String openCriticName = Iterables.get(output.findValues("name"), 1).asText();
-		logMessage("Comparing Name:'"+name+"' to OpenCritic Name:'"+openCriticName+"'");
+		logMessage("Comparing Name:'" + name + "' to OpenCritic Name:'" + openCriticName + "'");
 		if (name.equals(openCriticName)) {
 			openCriticScore = "OpenCritic Score: " + output.findValue("medianScore").asText();
 		}
 		String image = name.replaceAll("\\s|\\:|\\,", "").trim().toLowerCase();
 		Utils.downloadJPG("https://howlongtobeat.com" + output.findValue("imageUrl").asText(), image, 100);
-		sendMessage(channelId, "**"+name+"**");
+		sendMessage(channelId, "**" + name + "**");
 		embedImage(channelId, image + ".jpg");
-		sendMessage(channelId, Utils.constructMultiLineString(1, timeToBeatMain, timeToBeatExtra, timeToBeatCompletion, openCriticScore));
+		sendMessage(channelId, Utils.constructMultiLineString(1, timeToBeatMain, timeToBeatExtra, timeToBeatCompletion,
+				openCriticScore));
 	}
 
 	private void watch(MessageCreateEvent event, String type) {
@@ -268,7 +270,7 @@ public class UserListener extends CoreHelpers {
 	private void createPoll(MessageCreateEvent event, String message) {
 		Member usr = event.getMember().get();
 		long chn = event.getMessage().getChannelId().asLong();
-		Duration time = checkPollRestricted();
+		Duration time = checkPollRestricted(usr);
 		if (!time.isNegative()) {
 			sendMessage(chn,
 					"Hey, sorry but you'll need to wait until you can create another poll! You should be allowed to create another in "
@@ -280,13 +282,13 @@ public class UserListener extends CoreHelpers {
 		Message pollMsg = getMessage(chn, new Long(id));
 		pollMsg.pin().block();
 		poll.react(pollMsg);
-		restrictPoll(usr, LocalDateTime.now().plusHours(1));
+		restrictPoll(usr, LocalDateTime.now().plusMinutes(15));
 	}
 
 	private void createEvent(MessageCreateEvent event, String message) {
 		Member usr = event.getMember().get();
 		long chn = event.getMessage().getChannelId().asLong();
-		Duration time = checkPollRestricted();
+		Duration time = checkPollRestricted(usr);
 		if (!time.isNegative()) {
 			sendMessage(chn,
 					"Hey, sorry but you'll need to wait until you can create another event! You should be allowed to create another in "
@@ -306,7 +308,7 @@ public class UserListener extends CoreHelpers {
 		eventMsg.pin().block();
 		eventMsg.addReaction(ReactionEmoji.unicode("\u2705")).block();
 		EventManager.add(onlineEvent);
-		restrictPoll(usr, LocalDateTime.now().plusHours(1));
+		restrictPoll(usr, LocalDateTime.now().plusMinutes(15));
 		sendMessage(chn, "There you go " + usr.getMention() + ", I've created a new event for you! ^_^");
 	}
 
@@ -457,11 +459,22 @@ public class UserListener extends CoreHelpers {
 		restrictedPoll = time;
 	}
 
-	protected void resetPoll() {
-		restrictedPoll = LocalDateTime.now();
+	protected void resetPoll(MessageCreateEvent event) {
+		Member usr = event.getMember().get();
+		long chn = event.getMessage().getChannelId().asLong();
+		if (isAdmin(usr)) {
+			restrictedPoll = LocalDateTime.now();
+			sendMessage(chn, "https://c.tenor.com/vpGEo_akgVsAAAAd/will-smith-shades.gif");
+		} else {
+			sendMessage(chn,
+					Utils.randomOf("https://c.tenor.com/EHcnfkne6S0AAAAd/shaking-head-colin-jost.gif",
+							"https://c.tenor.com/4MhCTwlfFfQAAAAd/john-krasinski-really.gif",
+							"https://c.tenor.com/4nO578j2ikcAAAAM/nope.gif",
+							"https://c.tenor.com/8wLU9UiDhNMAAAAM/kristen-bell-smh.gif"));
+		}
 	}
 
-	protected Duration checkPollRestricted() {
-		return Duration.between(LocalDateTime.now(), restrictedPoll);
+	protected Duration checkPollRestricted(Member usr) {
+		return Duration.between(LocalDateTime.now(), isAdmin(usr) ? LocalDateTime.now().minusHours(1) : restrictedPoll);
 	}
 }
