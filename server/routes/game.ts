@@ -5,7 +5,7 @@ import { getGameHowLongToBeat, getGameRating } from "../utils";
 
 router.post("/", async (req: Request, res: Response) => {
   try {
-    const { game } = req.body;
+    const { game }: { game: string}  = req.body;
 
     if (!game) {
       res.status(400).json({ error: "Please give a game in the request body" });

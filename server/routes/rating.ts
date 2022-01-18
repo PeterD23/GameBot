@@ -4,7 +4,7 @@ const { getGameRating } = require("../utils");
 
 router.post("/", async (req: Request, res: Response) => {
   try {
-    const { game } = req.body;
+    const { game }: { game: string}  = req.body;
 
     const ratingData = await getGameRating(game);
 
