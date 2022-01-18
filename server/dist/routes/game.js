@@ -19,10 +19,16 @@ router.post("/", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { game } = req.body;
         if (!game) {
-            res.status(400).json({ error: "Please give a game in the request body" });
+            return res.status(400).json({ error: "Please give a game in the request body" });
         }
         const gameHltb = yield (0, utils_1.getGameHowLongToBeat)(game);
+        if (!gameHltb) {
+            return res.status(400).json({ error: "Could not find a HLTB for game" });
+        }
         const gameRating = yield (0, utils_1.getGameRating)(game);
+        if (!gameRating) {
+            return res.status(400).json({ error: "Could not find game rating" });
+        }
         res.status(200).json({ hltb: gameHltb, rating: gameRating });
     }
     catch (error) {
@@ -30,4 +36,4 @@ router.post("/", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         res.status(500).json({ error });
     }
 }));
-module.exports = router;
+exports.default = router;

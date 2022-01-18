@@ -3,7 +3,7 @@ const bodyParser = require("body-parser");
 const app = express();
 const recommendRouter = require("./routes/recommend");
 const ratingRouter = require("./routes/rating");
-const gameRouter = require("./routes/game");
+import gameRouter from "./routes/game";
 
 app.use(bodyParser.json());
 

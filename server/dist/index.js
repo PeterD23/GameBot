@@ -8,12 +8,12 @@ const bodyParser = require("body-parser");
 const app = (0, express_1.default)();
 const recommendRouter = require("./routes/recommend");
 const ratingRouter = require("./routes/rating");
-const gameRouter = require("./routes/game");
+const game_1 = __importDefault(require("./routes/game"));
 app.use(bodyParser.json());
 // Routes
 app.use("/recommend", recommendRouter);
 app.use("/rating", ratingRouter);
-app.use("/game", gameRouter);
+app.use("/game", game_1.default);
 app.listen(2460, () => {
     console.log("Running HLTB listener on port 2460");
 });
