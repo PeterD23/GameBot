@@ -1,27 +1,35 @@
 const hltb = require('howlongtobeat');
 const hltbService = new hltb.HowLongToBeatService();
-const fetch = require('node-fetch');
+import fetch from 'node-fetch';
 
-const searchHltb = async(searchTerm) => hltbService.search(searchTerm);
-const getGameDetailsById = async(id) => hltbService.detail(id);
+type openCriticSearchResult = { 
+        id: number,
+        name: string,
+        dist: number
+}
 
-const getGameHowLongToBeat = async(gameName) => {   
+const searchHltb = async(searchTerm: string) => hltbService.search(searchTerm);
+const getGameDetailsById = async(id: number) => hltbService.detail(id);
+
+const getGameHowLongToBeat = async(gameName: string) => {   
     const searchResults = await searchHltb(gameName);
     return getGameDetailsById(searchResults[0].id);
 }
 
-const getGameRating = async(game) => {
+const getGameRating = async(game: string) => {
+    try { 
+
     const encodedName = encodeURIComponent(game);
     const url = `http://api.opencritic.com/api/meta/search?criteria=${encodedName}`;
 
     const response = await fetch(url);
-    const data = await response.json();
+    const searchResults:unknown = await response.json();
 
-    if (!response.ok) {
+    if (!response.ok ) {
         return;
     }
 
-    const gameId = data[0].id;
+    const gameId:number = searchResults[0].id;
 
     const ratingResponse = await fetch(`http://api.opencritic.com/api/game/${gameId}`)
 
@@ -31,9 +39,12 @@ const getGameRating = async(game) => {
 
     const ratingData = await ratingResponse.json();
     return ratingData;
+    } catch(error){ 
+        console.error(error);
+    }
 }
 
-module.exports = { 
+export { 
     searchHltb,
     getGameDetailsById,
     getGameHowLongToBeat,
