@@ -10,15 +10,15 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getGameRating = exports.getGameHowLongToBeat = exports.getGameDetailsById = exports.searchHltb = void 0;
-const hltb = require('howlongtobeat');
-const hltbService = new hltb.HowLongToBeatService();
+const { HowLongToBeatService } = require('howlongtobeat');
+const hltbService = new HowLongToBeatService();
 const fetch = require('node-fetch');
-const searchHltb = (searchTerm) => hltbService.search(searchTerm);
+const searchHltb = (searchTerm) => __awaiter(void 0, void 0, void 0, function* () { return hltbService.search(searchTerm); });
 exports.searchHltb = searchHltb;
-const getGameDetailsById = (id) => hltbService.detail(id);
+const getGameDetailsById = (id) => __awaiter(void 0, void 0, void 0, function* () { return hltbService.detail(id); });
 exports.getGameDetailsById = getGameDetailsById;
 const getGameHowLongToBeat = (gameName) => __awaiter(void 0, void 0, void 0, function* () {
-    const searchResults = yield hltbService.search(gameName);
+    const searchResults = yield searchHltb(gameName);
     if (!(searchResults === null || searchResults === void 0 ? void 0 : searchResults.length)) {
         return '';
     }
