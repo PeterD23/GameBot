@@ -24,6 +24,11 @@
   "bugs": {
     "url": "https://github.com/PeterD23/GameBot/issues"
   },
+  "jest": {
+    "testPathIgnorePatterns": [
+      "<rootDir>/dist/*"
+    ]
+  },
   "homepage": "https://github.com/PeterD23/GameBot#readme",
   "dependencies": {
     "@types/body-parser": "^1.19.2",
@@ -49,6 +54,7 @@
     "jest": "^27.4.7",
     "nodemon": "^2.0.15",
     "prettier": "2.5.1",
-    "supertest": "^6.2.1"
+    "supertest": "^6.2.1",
+    "ts-jest": "^27.1.3"
   }
 }
