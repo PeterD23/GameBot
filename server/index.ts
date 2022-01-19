@@ -1,9 +1,9 @@
 import express from "express";
 const bodyParser = require("body-parser");
 const app = express();
-const recommendRouter = require("./routes/recommend");
-const ratingRouter = require("./routes/rating");
-import gameRouter from "./routes/game";
+import recommendRouter from "./routes/recommend"
+import ratingRouter from "./routes/rating"
+import gameRouter from "./routes/game"
 
 app.use(bodyParser.json());
 

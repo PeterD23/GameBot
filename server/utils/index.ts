@@ -2,13 +2,12 @@ const hltb = require('howlongtobeat');
 const hltbService = new hltb.HowLongToBeatService();
 const fetch = require('node-fetch');
 
-const searchHltb = async(searchTerm: string) => hltbService.search(searchTerm);
-const getGameDetailsById = async(id: number) => hltbService.detail(id);
+const searchHltb = (searchTerm: string) => hltbService.search(searchTerm);
+const getGameDetailsById = (id: number) => hltbService.detail(id);
 
 const getGameHowLongToBeat = async(gameName: string) => {   
-    const searchResults = await searchHltb(gameName);
+    const searchResults = await hltbService.search(gameName);
 
-    console.log(searchResults);
     if(!searchResults?.length){ 
         return '';
     }
@@ -49,4 +48,3 @@ export {
     getGameHowLongToBeat,
     getGameRating
 }
-

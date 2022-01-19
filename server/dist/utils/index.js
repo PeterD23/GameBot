@@ -13,13 +13,12 @@ exports.getGameRating = exports.getGameHowLongToBeat = exports.getGameDetailsByI
 const hltb = require('howlongtobeat');
 const hltbService = new hltb.HowLongToBeatService();
 const fetch = require('node-fetch');
-const searchHltb = (searchTerm) => __awaiter(void 0, void 0, void 0, function* () { return hltbService.search(searchTerm); });
+const searchHltb = (searchTerm) => hltbService.search(searchTerm);
 exports.searchHltb = searchHltb;
-const getGameDetailsById = (id) => __awaiter(void 0, void 0, void 0, function* () { return hltbService.detail(id); });
+const getGameDetailsById = (id) => hltbService.detail(id);
 exports.getGameDetailsById = getGameDetailsById;
 const getGameHowLongToBeat = (gameName) => __awaiter(void 0, void 0, void 0, function* () {
-    const searchResults = yield searchHltb(gameName);
-    console.log(searchResults);
+    const searchResults = yield hltbService.search(gameName);
     if (!(searchResults === null || searchResults === void 0 ? void 0 : searchResults.length)) {
         return '';
     }
