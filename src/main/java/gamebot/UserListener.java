@@ -448,9 +448,9 @@ public class UserListener extends CoreHelpers {
 	private void about(MessageCreateEvent event) {
 		long channelId = event.getMessage().getChannelId().asLong();
 		sendMessage(channelId,
-				"Hi! I'm Game Bot, and I help out managing peoples roles on the server! All my inner workings were done by "
+				"Hi! I'm Game Bot, and I help out managing peoples roles on the server! My inner workings were initially created by "
 						+ getUserById(97036843924598784L).getMention()
-						+ " so if at any point I stop working, please give him a kick!");
+						+ "! However, I'm also supported by these lovely people:\n"+ mentionUsersWithRole(933380677892730880L) +"So, if at any point I stop working, please give any of them a kick!");
 	}
 
 	protected void restrictPoll(Member usr, LocalDateTime time) {
