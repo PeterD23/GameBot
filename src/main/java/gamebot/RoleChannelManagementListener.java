@@ -111,6 +111,9 @@ public class RoleChannelManagementListener extends CoreHelpers {
 			sendMessage(CONSOLE,
 					"Testing mode is now enabled. You can now run a local copy of the bot and have it perform actions.");
 		});
+		commands.put("!deny", msg -> {
+			Utils.flipAdminDenial();
+		});
 	}
 	
 	private String trimCommand(String string) {

@@ -2,6 +2,8 @@ package gamebot;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.util.ArrayList;
+import java.util.stream.Collectors;
 
 import discord4j.core.DiscordClient;
 import discord4j.core.event.domain.lifecycle.ReadyEvent;
@@ -28,6 +30,8 @@ public class CoreHelpers {
 	protected long MUSIC = 797063557341773834L;
 	protected long EVENTS = 907696207508406342L;
 
+	protected long ADMIN_ROLE = 731604497435983992L;
+
 	private DiscordClient cli;
 
 	private PermissionSet readSend = PermissionSet.of(Permission.VIEW_CHANNEL, Permission.SEND_MESSAGES,
@@ -50,8 +54,28 @@ public class CoreHelpers {
 		return getGuild().getEmojis().filter(p -> p.getName().equals(name)).next().block();
 	}
 
+	protected String mentionUsersWithRole(long roleId) {
+		ArrayList<Member> members = new ArrayList<>(getGuild()
+				.getMembers()
+				.filter(usr -> usr.getRoleIds()
+				.contains(Snowflake.of(roleId)))
+				.collectList()
+				.block());
+		String mentions = "";
+		for (int i = 0; i < members.size(); i++) {
+			mentions += members.get(i).getMention() + "\n";
+		}
+		return mentions;
+	}
+
 	protected boolean isAdmin(Member usr) {
-		return usr.getRoles().any(p -> p.getName().equals("Admin")).block();
+		if (Utils.adminsDenied())
+			return false;
+		return usr.getRoles().any(p -> p.getId().asLong() == ADMIN_ROLE).block();
+	}
+
+	protected Role getRoleById(long id) {
+		return getGuild().getRoles().filter(p -> p.getId().asLong() == id).next().block();
 	}
 
 	protected Role getRoleByName(String name) {
@@ -77,6 +101,7 @@ public class CoreHelpers {
 	}
 
 	protected void logMessage(String message) {
+		log.info(message);
 		getChannel(LOG).createMessage(message).block().getId().asString();
 	}
 
@@ -87,9 +112,8 @@ public class CoreHelpers {
 	protected String embedImage(long channelId, String imageName) {
 		char ps = File.separatorChar;
 		String filePath = System.getProperty("user.home") + ps + "Pictures" + ps + imageName;
-		logMessage("Looking for "+filePath);
-		try {
-			FileInputStream fs = new FileInputStream(filePath);
+		logMessage("Looking for " + filePath);
+		try (FileInputStream fs = new FileInputStream(filePath)) {
 			String messageId = getChannel(channelId).createMessage(spec -> {
 				spec.addFile(imageName, fs);
 			}).block().getId().asString();
