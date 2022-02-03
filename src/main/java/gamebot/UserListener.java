@@ -222,16 +222,21 @@ public class UserListener extends CoreHelpers {
 			sendMessage(channelId, "An error occurred. Please type a valid game!");
 			return;
 		}
+		logMessage("Data returned:\n" + output.toPrettyString());
 		String name = output.findValue("name").asText();
 		String timeToBeatMain = "Time to Beat Campaign: " + output.findValue("gameplayMain").asText() + " Hours";
 		String timeToBeatExtra = "Time to Beat Extras: " + output.findValue("gameplayMainExtra").asText() + " Hours";
 		String timeToBeatCompletion = "Time to 100%: " + output.findValue("gameplayCompletionist").asText() + " Hours";
 		String openCriticScore = "OpenCritic Score: N/A";
 
-		String openCriticName = Iterables.get(output.findValues("name"), 1).asText();
-		logMessage("Comparing Name:'" + name + "' to OpenCritic Name:'" + openCriticName + "'");
-		if (name.equals(openCriticName)) {
-			openCriticScore = "OpenCritic Score: " + output.findValue("medianScore").asText();
+		try {
+			String openCriticName = Iterables.get(output.findValues("name"), 1).asText();
+			logMessage("Comparing Name:'" + name + "' to OpenCritic Name:'" + openCriticName + "'");
+			if (name.equals(openCriticName)) {
+				openCriticScore = "OpenCritic Score: " + output.findValue("medianScore").asText();
+			}
+		} catch (Exception e) {
+			logMessage("Could not find OpenCritic node.");
 		}
 		String image = name.replaceAll("\\s|\\:|\\,", "").trim().toLowerCase();
 		Utils.downloadJPG("https://howlongtobeat.com" + output.findValue("imageUrl").asText(), image, 100);
@@ -450,7 +455,9 @@ public class UserListener extends CoreHelpers {
 		sendMessage(channelId,
 				"Hi! I'm Game Bot, and I help out managing peoples roles on the server! My inner workings were initially created by "
 						+ getUserById(97036843924598784L).getMention()
-						+ "! However, I'm also supported by these lovely people:\n"+ mentionUsersWithRole(933380677892730880L) +"So, if at any point I stop working, please give any of them a kick!");
+						+ "! However, I'm also supported by these lovely people:\n"
+						+ mentionUsersWithRole(933380677892730880L)
+						+ "So, if at any point I stop working, please give any of them a kick!");
 	}
 
 	protected void restrictPoll(Member usr, LocalDateTime time) {
