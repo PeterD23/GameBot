@@ -3,7 +3,6 @@ package gamebot;
 import java.io.File;
 import java.io.FileInputStream;
 import java.util.ArrayList;
-import java.util.stream.Collectors;
 
 import discord4j.core.DiscordClient;
 import discord4j.core.event.domain.lifecycle.ReadyEvent;
@@ -67,7 +66,12 @@ public class CoreHelpers {
 		}
 		return mentions;
 	}
-
+	
+	protected boolean mentionedBot(String message) {
+		String bot = getUserById(BOT_ID).getMention();
+		return message.replaceAll("!", "").contains(bot);
+	}
+	
 	protected boolean isAdmin(Member usr) {
 		if (Utils.adminsDenied())
 			return false;
