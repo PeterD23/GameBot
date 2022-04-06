@@ -27,7 +27,8 @@ public class MeetupEvent {
 	}
 
 	public MeetupEvent addDate(String start) {
-		this.startDateTime = start;
+		String cleaned = start.replace("\n", " at ").replaceAll(" to.{1,}", ""); // I fucking hate you Meetup
+		this.startDateTime = cleaned;
 		return this;
 	}
 

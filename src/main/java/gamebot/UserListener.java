@@ -1,16 +1,10 @@
 package gamebot;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Random;
 
 import org.apache.commons.lang.RandomStringUtils;
@@ -26,7 +20,6 @@ import org.apache.http.util.EntityUtils;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Iterables;
-import com.google.common.io.Files;
 
 import discord4j.core.event.domain.guild.MemberJoinEvent;
 import discord4j.core.event.domain.lifecycle.ReadyEvent;
@@ -185,11 +178,10 @@ public class UserListener extends CoreHelpers {
 		commands.put("!poll", (evt, msg) -> createPoll(evt, msg));
 		commands.put("!event", (evt, msg) -> createEvent(evt, msg));
 		commands.put("!help", (evt, msg) -> help(evt, msg));
-		commands.put("!bash", (evt, msg) -> bash(evt, msg));
+		commands.put("!status", (evt, msg) -> status(evt));
 		commands.put("!embed", (evt, msg) -> embed(evt, msg));
 		commands.put("!watch-poll", (evt, msg) -> watch(evt, "Poll"));
 		commands.put("!watch-event", (evt, msg) -> watch(evt, "Event"));
-		commands.put("!selfie", (evt, msg) -> selfie(evt));
 		commands.put("!hltb", (evt, msg) -> howLongToBeat(evt, msg));
 		commands.put("!reset", (evt, msg) -> resetPoll(evt));
 	}
@@ -261,12 +253,6 @@ public class UserListener extends CoreHelpers {
 		}
 	}
 
-	private void selfie(MessageCreateEvent event) {
-		long chn = event.getMessage().getChannelId().asLong();
-		executeBash("cd && sudo ./selfie.sh");
-		embedImage(chn, "selfie.jpg");
-	}
-
 	private void embed(MessageCreateEvent event, String image) {
 		long chn = event.getMessage().getChannelId().asLong();
 		embedImage(chn, image.replace("!embed", "").trim());
@@ -331,49 +317,16 @@ public class UserListener extends CoreHelpers {
 		}
 	}
 
-	private void bash(MessageCreateEvent event, String msg) {
+	private void status(MessageCreateEvent event) {
+		Status.init(this);
 		long chn = event.getMessage().getChannelId().asLong();
-		if (!isAdmin(event.getMember().get()))
-			return;
 		boolean isWindows = System.getProperty("os.name").toLowerCase().startsWith("windows");
 		if (isWindows) {
 			sendMessage(chn, "I'm running on Windows, dumbass.");
 			return;
 		}
-		String output = executeBash(msg.replace("!bash", "").trim());
+		String output = Status.getStatus();
 		sendMessage(chn, output);
-	}
-
-	private String executeBash(String command) {
-		if (!canExecute(command))
-			return "Command has not been whitelisted.";
-		try {
-			ProcessBuilder builder = new ProcessBuilder();
-			builder.command("sh", "-c", command);
-			builder.directory(new File(System.getProperty("user.home")));
-			Process process = builder.start();
-			BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-			StringBuilder sb = new StringBuilder();
-			String line = null;
-			while ((line = reader.readLine()) != null) {
-				sb.append(line);
-				sb.append(System.getProperty("line.separator"));
-			}
-			int exitCode = process.waitFor();
-			return "```" + sb.toString() + "\nProcess exited with code " + exitCode + "```";
-		} catch (IOException | InterruptedException e) {
-			logMessage("Bash script failed to execute: " + e.getStackTrace()[0]);
-			return "Woops haha that didn't work";
-		}
-	}
-
-	private boolean canExecute(String command) {
-		try {
-			List<String> commands = Files.readLines(new File("whitelist"), Charset.defaultCharset());
-			return commands.contains(command);
-		} catch (IOException e) {
-			return false;
-		}
 	}
 
 	private void checkIfVerifyingMeetup(User usr, String msg) {
