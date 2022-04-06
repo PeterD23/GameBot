@@ -30,10 +30,9 @@ public class SeleniumDriver {
 	private FluentWait<WebDriver> wait;
 
 	private final String baseXPath = "//div[contains(@class,'eventList')]//a[contains(@class,'eventCard--link')]";
-	private final String eventName = "//h1[contains(@class,'pageTitle')]";
-	private final String eventDate = "//span[contains(@class,'eventTimeDisplay-startDate')]";
-	private final String startTime = "//span[contains(@class,'eventTimeDisplay-startDate-time')]/span";
-	private final String attendeeText = "//h3[contains(@class,'attendees')]/span";
+	private final String eventName = "//main//h1";
+	private final String eventDate = "//div[contains(@class,'pl-4')]/time";
+	private final String attendeeText = "//a[text()='See all']/../h2";
 
 	private static SeleniumDriver instance;
 
@@ -62,7 +61,7 @@ public class SeleniumDriver {
 	private SeleniumDriver() {
 		WebDriverManager.chromedriver().setup();
 		webDriver = new ChromeDriver(setHeadlessMode());
-		wait = new WebDriverWait(webDriver, 5).ignoring(StaleElementReferenceException.class);
+		wait = new WebDriverWait(webDriver, 15).ignoring(StaleElementReferenceException.class);
 		if (login())
 			log.info("Successfully logged in to Meetup");
 		else
@@ -162,9 +161,10 @@ public class SeleniumDriver {
 		try {
 			String eventId = extractIdFromMeetupUrl(eventUrl);
 			event.addId(eventId).addUrl(eventUrl).addName(TextOf(eventName))
-					.addDate(TextOf(eventDate) + " at " + TextOf(startTime)).addCurrentAttendees(TextOf(attendeeText));
+					.addDate(TextOf(eventDate)).addCurrentAttendees(TextOf(attendeeText));
 		} catch (Exception e) {
 			log.error("Could not parse event data.");
+			e.printStackTrace();
 		}
 		return event;
 	}
