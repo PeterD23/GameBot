@@ -35,7 +35,7 @@ public class IntervalListener extends CoreHelpers {
 	private HashMap<String, Command> commands = new HashMap<>();
 	private String playlist = "1xfucmjxRtcxXolfNaaA5M";
 
-	private final String prependData = getEveryoneMention() + "\nHere is an upcoming event:\n>>> ";
+	private final String prependData = "\nHere is an upcoming event:\n>>> ";
 
 	private static SeleniumDriver driver;
 
@@ -124,7 +124,7 @@ public class IntervalListener extends CoreHelpers {
 		for (MeetupEvent event : events) {
 			if (event.toString().equals("err"))
 				continue;
-			String message = prependData + event.toString() + convertAttendees(event.getID());
+			String message = getEveryoneMention() + prependData + event.toString() + convertAttendees(event.getID());
 			String possibleId = MeetupEventManager.hasEvent(event);
 			if (possibleId != "") {
 				editMessage(MEETUP, possibleId, message);
