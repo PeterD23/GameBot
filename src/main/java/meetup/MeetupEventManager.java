@@ -37,6 +37,7 @@ public class MeetupEventManager {
 		}).map(o -> o.second()).collect(Collectors.toCollection(ArrayList::new));
 		events.removeIf(o -> toRemove.contains(o.second()));
 		log.info("Found "+toRemove.size()+ ", Events list now contains "+events.size());
+		saveEventData();
 		return toRemove;
 	}
 	
@@ -61,7 +62,7 @@ public class MeetupEventManager {
 		try {
 			FileUtils.writeLines(new File("events"), lines);
 		} catch (IOException e) {
-			log.warn("Failed to save games to file");
+			log.warn("Failed to save events to file");
 		}
 	}
 

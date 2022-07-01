@@ -3,8 +3,10 @@ package onlineevent;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.apache.commons.io.FileUtils;
 
@@ -28,6 +30,19 @@ public class EventManager {
 	public static void add(OnlineEvent event) {
 		events.add(event);
 		saveEventData();
+	}
+	
+	public static ArrayList<Long> scheduleMessagesForDeletion() {
+		log.info("Scheduling past online events for deletion...");
+		LocalDateTime time = LocalDateTime.now();
+		ArrayList<Long> toRemove = events.stream().filter(o -> {
+			LocalDateTime check = o.getDateTime().plusMinutes(30);
+			return time.compareTo(check) > 0; 
+		}).map(o -> o.getMessageId()).collect(Collectors.toCollection(ArrayList::new));
+		events.removeIf(o -> toRemove.contains(o.getMessageId()));
+		log.info("Found "+toRemove.size()+ ", Online Events list now contains "+events.size());
+		saveEventData();
+		return toRemove;
 	}
 	
 	public static void saveEventData() {

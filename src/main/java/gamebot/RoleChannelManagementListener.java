@@ -24,6 +24,7 @@ import discord4j.core.object.entity.User;
 import discord4j.core.object.reaction.ReactionEmoji;
 import discord4j.core.object.reaction.ReactionEmoji.Custom;
 import discord4j.core.object.util.Snowflake;
+import meetup.MeetupEventManager;
 import meetup.MeetupLinker;
 import reactor.util.Logger;
 import reactor.util.Loggers;
@@ -102,7 +103,8 @@ public class RoleChannelManagementListener extends CoreHelpers {
 			readDataIntoMap(genreRoles, "genres");		
 			setupReactsOnGenres();
 			MeetupLinker.readVerified();
-			sendMessage(CONSOLE, "Re-synchronised genre and verified lists!");
+			MeetupEventManager.init();
+			sendMessage(CONSOLE, "Re-synchronised genre, verified and event lists!");
 		});
 		commands.put("!add-role", msg -> sendMessage(CONSOLE,
 				"Role " + msg + " of ID " + createRole(msg).getId().asLong() + " created!"));

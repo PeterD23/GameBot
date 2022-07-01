@@ -50,13 +50,19 @@ public class MeetupEvent {
 
 	public String getDate() {
 		String[] splitDate = startDateTime.split(", | ");
-		String parseableDate = splitDate[0].substring(0, 3) + ", " + splitDate[2] + " " + splitDate[1].substring(0, 3)
-				+ " " + splitDate[3] + " " + convertAmPm(splitDate[5], splitDate[6]) + " GMT";
-		return LocalDateTime.parse(parseableDate, DateTimeFormatter.RFC_1123_DATE_TIME).toString();
+		try {
+			String parseableDate = splitDate[0].substring(0, 3) + ", " + splitDate[2] + " "
+					+ splitDate[1].substring(0, 3) + " " + splitDate[3] + " " + convertAmPm(splitDate[5], splitDate[6])
+					+ " GMT";
+			return LocalDateTime.parse(parseableDate, DateTimeFormatter.RFC_1123_DATE_TIME).toString();
+		} catch (Exception e) {
+			e.printStackTrace();
+			return LocalDateTime.now().plusMonths(1).toString();
+		}
 	}
-	
+
 	private String convertAmPm(String time, String amPm) {
-		String[] split = time.split(":");		
+		String[] split = time.split(":");
 		int hour = Integer.parseInt(split[0]) + (amPm.equals("PM") ? 12 : 0);
 		return String.join(":", String.valueOf(hour), split[1]); // Fuck you
 	}

@@ -52,7 +52,7 @@ public class MeetupLinker {
 	}
 	
 	public static boolean queueUser(Long userId, String code) {
-		if(queuedUsers.get(userId) != null || verified.get(userId) != null) {
+		if(verified.get(userId) != null) {
 			return true;
 		}
 		log.info("Queuing Member ID "+ userId + " with a temp verification code of "+code);

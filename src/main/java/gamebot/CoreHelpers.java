@@ -45,6 +45,10 @@ public class CoreHelpers {
 		}).block();
 	}
 
+	protected String getEveryoneMention() {
+		return getGuild().getEveryoneRole().block().getMention();
+	}
+	
 	protected Guild getGuild() {
 		return cli.getGuildById(Snowflake.of(SERVER)).block();
 	}
@@ -100,8 +104,9 @@ public class CoreHelpers {
 		logMessage("Editing message ID " + messageId + " with String of length " + newMessage.length());
 	}
 
-	protected void deleteMessage(long channelId, String messageId) {
-		getChannel(channelId).getMessageById(Snowflake.of(messageId));
+	protected void deleteMessage(long channelId, String messageId, String reason) {
+		getChannel(channelId).getMessageById(Snowflake.of(messageId)).block().delete(reason).block();
+		logMessage("Deleting message ID " + messageId + " with reason "+reason);
 	}
 
 	protected void logMessage(String message) {
