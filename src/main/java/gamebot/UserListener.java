@@ -307,7 +307,7 @@ public class UserListener extends CoreHelpers {
 		long chn = event.getMessage().getChannelId().asLong();
 		if (msg.contains("poll")) {
 			sendMessage(chn,
-					"To create a poll, type !poll followed by the description of the poll. By default it will use Yes/No, but if you want custom answers define as so: (Yes|No|Other|Aliens|Cheese)");
+					"To create a poll, type !poll followed by the description of the poll. By default it will use Yes/No, but if you want custom answers define as so: (Yes|No|Other|Aliens|Cheese)\n Example:\nWhat cake is best (Chocolate|Birthday|Sponge)");
 		} else if (msg.contains("event")) {
 			sendMessage(chn,
 					"To create an event, type !event followed by the following format, using | as delimiters: TITLE | DESCRIPTION | DATETIME(yyyy-MM-dd HH:mm)");
