@@ -181,7 +181,7 @@ public class IntervalListener extends CoreHelpers {
 		ArrayList<Long> pastOnlineEvents = EventManager.scheduleMessagesForDeletion();
 		for (Long s : pastOnlineEvents) {
 			log.info("Deleting message ID " + s);
-			deleteMessage(MEETUP, s.toString(), "Online Event has expired");
+			deleteMessage(EVENTS, s.toString(), "Online Event has expired");
 		}
 	}
 

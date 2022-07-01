@@ -36,7 +36,7 @@ public class EventManager {
 		log.info("Scheduling past online events for deletion...");
 		LocalDateTime time = LocalDateTime.now();
 		ArrayList<Long> toRemove = events.stream().filter(o -> {
-			LocalDateTime check = o.getDateTime().plusMinutes(30);
+			LocalDateTime check = o.getDateTime().plusHours(8);
 			return time.compareTo(check) > 0; 
 		}).map(o -> o.getMessageId()).collect(Collectors.toCollection(ArrayList::new));
 		events.removeIf(o -> toRemove.contains(o.getMessageId()));
