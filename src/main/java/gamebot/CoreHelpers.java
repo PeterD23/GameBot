@@ -33,7 +33,7 @@ public class CoreHelpers {
 
 	private DiscordClient cli;
 
-	private PermissionSet readSend = PermissionSet.of(Permission.VIEW_CHANNEL, Permission.SEND_MESSAGES,
+	protected PermissionSet readSend = PermissionSet.of(Permission.VIEW_CHANNEL, Permission.SEND_MESSAGES,
 			Permission.READ_MESSAGE_HISTORY);
 
 	private static Logger log = Loggers.getLogger("logger");
