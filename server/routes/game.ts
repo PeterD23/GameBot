@@ -1,6 +1,18 @@
 import express, { Request, Response } from "express";
 const router = express.Router();
-import { getGameHowLongToBeat, getGameRating } from "../utils";
+import { hltbClient } from '../utils/HltbClient';
+
+const getHltb = async (game: string) => {
+  try {
+    const gameHltb = await hltbClient.search(game);
+
+    console.log(gameHltb);
+    return gameHltb;
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+}
 
 router.post("/", async (req: Request, res: Response) => {
   try {
@@ -10,19 +22,11 @@ router.post("/", async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Please give a game in the request body" });
     }
 
-    const gameHltb = await getGameHowLongToBeat(game);
+    const gameHltb = await getHltb(game);
 
-    if (!gameHltb) {
-      return res.status(400).json({ error: "Could not find a HLTB for game" });
-    }
+    // const gameRating = await something();
 
-    const gameRating = await getGameRating(game);
-
-    if (!gameRating) {
-      return res.status(400).json({ error: "Could not find game rating" });
-    }
-    
-    res.status(200).json({ hltb: gameHltb, rating: gameRating });
+    res.status(200).json({ hltb: gameHltb, rating: null });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error });

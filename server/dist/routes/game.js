@@ -14,22 +14,27 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const router = express_1.default.Router();
-const utils_1 = require("../utils");
+const HltbClient_1 = require("../utils/HltbClient");
+const getHltb = (game) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const gameHltb = yield HltbClient_1.hltbClient.search(game);
+        console.log(gameHltb);
+        return gameHltb;
+    }
+    catch (error) {
+        console.error(error);
+        return null;
+    }
+});
 router.post("/", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { game } = req.body;
         if (!game) {
             return res.status(400).json({ error: "Please give a game in the request body" });
         }
-        const gameHltb = yield (0, utils_1.getGameHowLongToBeat)(game);
-        if (!gameHltb) {
-            return res.status(400).json({ error: "Could not find a HLTB for game" });
-        }
-        const gameRating = yield (0, utils_1.getGameRating)(game);
-        if (!gameRating) {
-            return res.status(400).json({ error: "Could not find game rating" });
-        }
-        res.status(200).json({ hltb: gameHltb, rating: gameRating });
+        const gameHltb = yield getHltb(game);
+        // const gameRating = await something();
+        res.status(200).json({ hltb: gameHltb || null, rating: null });
     }
     catch (error) {
         console.error(error);
