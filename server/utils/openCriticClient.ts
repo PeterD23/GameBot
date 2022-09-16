@@ -28,8 +28,7 @@ export const openCriticClient = {
 
         const data:OpenCriticSearchResult = await response.json();
 
-        if(!data.length) {
-            
+        if(!data.length) { 
             throw new OPEN_CRITIC_ERROR('No Games Found');
         }
 
@@ -49,12 +48,17 @@ export const openCriticClient = {
 
         const game:OpenCriticGameObject = await response.json();
 
+        console.log(game);
+
         if (!game) {
             throw new OPEN_CRITIC_ERROR('No Game Found');
         }
 
-        return {
-
-
-         }
+        return { 
+            hasLootBoxes: game.hasLootBoxes,
+            medianScore: game.medianScore,
+            name: game.name,
+            description: game.description,
+            genre: game.genre
+        }
 }}
