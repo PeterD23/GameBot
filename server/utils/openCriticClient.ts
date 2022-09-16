@@ -1,4 +1,6 @@
 const fetch = require('node-fetch');
+import  { OpenCriticSearchResult, OpenCriticGameObject } from '../interfaces/OpenCritic';
+
 import { OPEN_CRITIC_ERROR } from '../errors';
 
 const openCriticHeaders = {
@@ -8,39 +10,51 @@ const openCriticHeaders = {
 
 const BASE_URL = 'https://opencritic-api.p.rapidapi.com';
 const SEARCH_URL = `${BASE_URL}/game/search`;
-const GAME_DETAILS_URL = `${BASE_URL}/id`
-
-const formatOpenCriticResponse = (data: any) => {
-
-
-}
-
-
+const GAME_DETAILS_URL = `${BASE_URL}/game`
 
 export const openCriticClient = {
     search: async (game: string) => {
         const url = `${SEARCH_URL}?criteria=${encodeURIComponent(game)}`
         const response = await fetch(url, {
-            method: 'POST',
+            method: 'GET',
             headers: openCriticHeaders,
-
         });
-        return response.json();
+
+        if(!response.ok){ 
+            const error = (response && response.message) || response.status;
+            console.error(error);
+            throw new OPEN_CRITIC_ERROR('API Error');
+        }
+
+        const data:OpenCriticSearchResult = await response.json();
+
+        if(!data.length) {
+            
+            throw new OPEN_CRITIC_ERROR('No Games Found');
+        }
+
+        return data[0];
     },
-    get: async (url: string) => {
-        const response = await fetch(url, {
+    getGame: async (id: number) => {
+        const response = await fetch(`${GAME_DETAILS_URL}/${id}`, {
             method: 'GET',
             headers: openCriticHeaders
         });
-        if (!response.ok) {
-            throw new OPEN_CRITIC_ERROR('Error getting games from OpenCritic')
-        }
-        const data = await response.json();
 
-        if (!data || !data.length) {
+        if (!response.ok) {
+            const error = (response && response.message) || response.status;
+            console.error(error);
+            throw new OPEN_CRITIC_ERROR('Game Details Api error')
+        }
+
+        const game:OpenCriticGameObject = await response.json();
+
+        if (!game) {
             throw new OPEN_CRITIC_ERROR('No Game Found');
         }
 
-        return data;
-    }
-}
+        return {
+
+
+         }
+}}

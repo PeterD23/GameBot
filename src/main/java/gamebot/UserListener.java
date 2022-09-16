@@ -220,7 +220,8 @@ public class UserListener extends CoreHelpers {
 		String timeToBeatExtra = "Time to Beat Extras: " + output.findValue("gameplayMainExtra").asText() + " Hours";
 		String timeToBeatCompletion = "Time to 100%: " + output.findValue("gameplayCompletionist").asText() + " Hours";
 		String openCriticScore = "OpenCritic Score: N/A";
-
+		String hltbAudienceScore = "HLTB Player Score: " + output.findValue("hltbScore").asText();
+		String developer = "Developer: " + output.findValue("developer").asText();
 		try {
 			String openCriticName = Iterables.get(output.findValues("name"), 1).asText();
 			logMessage("Comparing Name:'" + name + "' to OpenCritic Name:'" + openCriticName + "'");
@@ -234,7 +235,7 @@ public class UserListener extends CoreHelpers {
 		Utils.downloadJPG("https://howlongtobeat.com" + output.findValue("imageUrl").asText(), image, 100);
 		sendMessage(channelId, "**" + name + "**");
 		embedImage(channelId, image + ".jpg");
-		sendMessage(channelId, Utils.constructMultiLineString(1, timeToBeatMain, timeToBeatExtra, timeToBeatCompletion,
+		sendMessage(channelId, Utils.constructMultiLineString(1, developer, timeToBeatMain, timeToBeatExtra, timeToBeatCompletion, hltbAudienceScore,
 				openCriticScore));
 	}
 

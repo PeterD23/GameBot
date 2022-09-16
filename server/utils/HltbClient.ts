@@ -13,10 +13,10 @@ const formatHLTBResponse = (games: Array<HowLongToBeatGame>) => {
         const game = games[0];
         const formattedData: HLTBGameFormattedResult = {
             name: game.game_name,
-            pictureUrl: game.game_image,
-            gameplayMain: convertToHours(game.comp_main),
-            gameplayMainExtra: convertToHours(game.comp_plus),
-            gameplayCompletionist: convertToHours(game.comp_all),
+            imageUrl: game.game_image,
+            gameplayMain: convertToHours(game.comp_main).toFixed(1),
+            gameplayMainExtra: convertToHours(game.comp_plus).toFixed(1),
+            gameplayCompletionist: convertToHours(game.comp_all).toFixed(1),
             releaseYear: game.release_world,
             developer: game.profile_dev,
             platforms: game.profile_platform,

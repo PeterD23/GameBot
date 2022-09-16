@@ -1,10 +1,10 @@
 export interface HLTBGameFormattedResult {
     name: string;
-    pictureUrl?: string;
+    imageUrl?: string;
     developer?: string;
-    gameplayMain: number;
-    gameplayMainExtra: number;
-    gameplayCompletionist: number;
+    gameplayMain: string;
+    gameplayMainExtra: string;
+    gameplayCompletionist: string;
     hltbScore?: number;
     releaseYear?: number;
     platforms?: string;
