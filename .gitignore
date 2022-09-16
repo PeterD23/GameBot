@@ -25,4 +25,4 @@ hs_err_pid*
 
 # NodeJS Dependencies
 */node_modules/
-*/server/dist/*
+**/server/dist/**/*.js
