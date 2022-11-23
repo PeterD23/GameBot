@@ -132,7 +132,7 @@ public class IntervalListener extends CoreHelpers {
 		logMessage("Found "+attendees.size()+" attendees for event "+eventId+" to append");
 		for(Pair<String, String> attendee : attendees) {
 			Long userId = MeetupLinker.getUserByMeetupId(new Long(attendee.second()));		
-			list += attendee.first() + (userId != 0L ? ": "+getUserById(userId).getMention() : "") +"\n";
+			list += attendee.first() + (userId != 0L ? ": "+getUserIfMentionable(userId) : "") +"\n";
 		}
 		return list;
 	}

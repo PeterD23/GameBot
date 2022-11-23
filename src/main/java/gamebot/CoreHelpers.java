@@ -89,6 +89,11 @@ public class CoreHelpers {
 	protected Member getUserById(long id) {
 		return getGuild().getMembers().filter(p -> p.getId().asLong() == id).next().block();
 	}
+	
+	protected String getUserIfMentionable(long id) {
+		Member member = getUserById(id);
+		return member != null ? member.getMention() : "";
+	}
 
 	protected Member convertUserToMember(long id) {
 		return cli.getUserById(Snowflake.of(id)).block().asMember(Snowflake.of(SERVER)).block();
