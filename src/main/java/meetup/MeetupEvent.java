@@ -49,6 +49,15 @@ public class MeetupEvent {
 	}
 
 	public String getDate() {
+		/**
+		 * Split Date: 
+		 * #0 = Day (3 char)
+		 * #1 = Month (3 char)
+		 * #2 = Day of Month
+		 * #3 = Year
+		 * #5 = Time
+		 * #6 = AM/PM  
+		 */
 		String[] splitDate = startDateTime.split(", | ");
 		String parseableDate = splitDate[0].substring(0, 3) + ", " + splitDate[2] + " " + splitDate[1].substring(0, 3)
 				+ " " + splitDate[3] + " " + convertAmPm(splitDate[5], splitDate[6]) + " GMT";

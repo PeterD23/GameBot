@@ -92,7 +92,7 @@ public class SeleniumDriver {
 
 	public long sendCode(String meetupUrl, String code) {
 		lock();
-		long meetupId = new Long(extractIdFromMeetupUrl(meetupUrl));
+		long meetupId = new Long(extractIdFromMeetupUrl(meetupUrl)).longValue();
 		try {
 			webDriver.get(meetupUrl);
 			Element("//a[contains(@id, 'message-link')]").click();
