@@ -101,15 +101,15 @@ public class IntervalListener extends CoreHelpers {
 
 	private void fetchEventData() {
 		log.info("Fetching events from Meetup");
-		logMessage("Fetching events from Meetup, time is "+LocalTime.now().toString());
+		ChannelLogger.logMessage("Fetching events from Meetup, time is "+LocalTime.now().toString());
 		
 		if(driver.isLocked()) {
 			log.info("Driver is currently busy, will try again in 15");
-			logMessage("Driver attempted to fetch events but is currently busy");
+			ChannelLogger.logMessage("Driver attempted to fetch events but is currently busy");
 			return;
 		}
 		ArrayList<MeetupEvent> events = driver.returnEventData();
-		logMessage("Found "+events.size()+" events from Meetup");
+		ChannelLogger.logMessage("Found "+events.size()+" events from Meetup");
 		for(MeetupEvent event : events) {
 			if(event.toString().equals("err"))
 				continue;
@@ -118,18 +118,27 @@ public class IntervalListener extends CoreHelpers {
 			if(possibleId != "") {
 				editMessage(MEETUP, possibleId, message);
 			} else {
-				String messageId = sendMessage(MEETUP, message);
-				getChannel(MEETUP).getMessageById(Snowflake.of(new Long(messageId))).block().pin().block();
-				MeetupEventManager.addEvent(event.getID(), messageId, event.getDate());
-				logMessage("Added new pinned event to Event List");
+				sendMessageIfValid(event, message);
 			}
 		}
 	}
 	
+	private void sendMessageIfValid(MeetupEvent event, String message) {
+		boolean validDate = !event.getDate().equals("err");		
+		if(!validDate) {
+			ChannelLogger.logHighPriorityMessage("Unable to parse the date for event "+event.getID()+", using placeholder date.");
+		}
+		String messageId = sendMessage(MEETUP, message);
+		getChannel(MEETUP).getMessageById(Snowflake.of(new Long(messageId))).block().pin().block();
+		MeetupEventManager.addEvent(event.getID(), messageId, validDate ? event.getDate() : "2050-01-01T00:00");
+		ChannelLogger.logMessage("Added new pinned event to Event List");
+	}
+	
+	
 	private String convertAttendees(String eventId) {
 		String list = "\n\n";
 		ArrayList<Pair<String, String>> attendees = driver.collateAttendees(eventId);
-		logMessage("Found "+attendees.size()+" attendees for event "+eventId+" to append");
+		ChannelLogger.logMessage("Found "+attendees.size()+" attendees for event "+eventId+" to append");
 		for(Pair<String, String> attendee : attendees) {
 			Long userId = MeetupLinker.getUserByMeetupId(new Long(attendee.second()));		
 			list += attendee.first() + (userId != 0L ? ": "+getUserIfMentionable(userId) : "") +"\n";
@@ -156,7 +165,7 @@ public class IntervalListener extends CoreHelpers {
 			ArrayList<String> pastEvents = MeetupEventManager.scheduleMessagesForDeletion();
 			for(String s : pastEvents) {
 				log.info("Deleting message ID "+s);
-				logMessage("Deleting message ID"+s+" which is an expired event");
+				ChannelLogger.logMessage("Deleting message ID"+s+" which is an expired event");
 				deleteMessage(MEETUP, s);
 			}
 		}	
@@ -171,7 +180,7 @@ public class IntervalListener extends CoreHelpers {
 			if(Duration.between(LocalDateTime.now(), date).toMinutes() < 30 && !event.checkHalfHourReminder()){		
 				event.triggerHalfHourReminder();
 				ArrayList<Long> attendees = event.getAttendeesToDM();
-				logMessage("Sending reminders to "+attendees.size()+" people for events");
+				ChannelLogger.logMessage("Sending reminders to "+attendees.size()+" people for events");
 				for(long attendee : attendees) {
 					long privateChannel = getUserById(attendee).getPrivateChannel().block().getId().asLong();
 					sendPrivateMessage(privateChannel, "You have an event upcoming in less than 30 minutes, check the online events channel for more details!");
@@ -182,7 +191,7 @@ public class IntervalListener extends CoreHelpers {
 
 	private void recommendSong() {
 		log.info("Scheduled recommendation for music");
-		logMessage("Time is 12 pm, recommending a song from Spotify");
+		ChannelLogger.logMessage("Time is 12 pm, recommending a song from Spotify");
 		if(LocalDateTime.now().getDayOfWeek() == DayOfWeek.FRIDAY) {
 			sendMessage(MUSIC, "https://open.spotify.com/track/79ozNtJ4aqVaAav0bqXpji");
 			return;
