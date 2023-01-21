@@ -141,7 +141,7 @@ public class SeleniumDriver {
 				urls.add(getEventUrl(card));
 			}
 			for (String url : urls) {
-				log.info("Resolving URL " + url);
+				log.info("Resolving URL " + url.replace("https://www", ""));
 				webDriver.get(url);
 				eventData.add(compileEvent(url));
 				webDriver.get(meetupUrl);

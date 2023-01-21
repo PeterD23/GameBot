@@ -21,19 +21,19 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Iterables;
 
+import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.guild.MemberJoinEvent;
 import discord4j.core.event.domain.lifecycle.ReadyEvent;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.event.domain.message.MessageUpdateEvent;
 import discord4j.core.event.domain.message.ReactionAddEvent;
 import discord4j.core.event.domain.message.ReactionRemoveEvent;
-import discord4j.core.object.entity.Channel;
 import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.Message;
-import discord4j.core.object.entity.PrivateChannel;
 import discord4j.core.object.entity.User;
+import discord4j.core.object.entity.channel.MessageChannel;
+import discord4j.core.object.entity.channel.PrivateChannel;
 import discord4j.core.object.reaction.ReactionEmoji;
-import discord4j.core.object.util.Snowflake;
 import meetup.MeetupLinker;
 import meetup.SeleniumDriver;
 import onlineevent.EventManager;
@@ -62,12 +62,12 @@ public class UserListener extends CoreHelpers {
 			return;
 
 		Message message = event.getMessage();
-		Channel chn = message.getChannel().block();
+		MessageChannel chn = message.getChannel().block();
 		if (chn instanceof PrivateChannel) {
 			User usr = message.getAuthor().get();
 			if (usr.isBot())
 				return;
-			checkIfVerifyingMeetup(usr, event.getMessage().getContent().orElse(""));
+			checkIfVerifyingMeetup(usr, event.getMessage().getContent());
 			return;
 		}
 
@@ -76,7 +76,7 @@ public class UserListener extends CoreHelpers {
 		if (usr.isBot())
 			return;
 
-		String msg = event.getMessage().getContent().orElse("");
+		String msg = event.getMessage().getContent();
 		parseCommand(event, msg);
 		if (chn.getId().asLong() == MUSIC && new Random().nextInt(6) == 5
 				&& msg.startsWith("https://open.spotify.com/track/")) {
@@ -96,7 +96,7 @@ public class UserListener extends CoreHelpers {
 		if (usr.isBot())
 			return;
 
-		String msg = message.getContent().orElse("");
+		String msg = message.getContent();
 		if (msg.startsWith("!verify"))
 			verify(usr, channelId, msg);
 	}
