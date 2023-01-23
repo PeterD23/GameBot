@@ -363,8 +363,8 @@ public class UserListener extends CoreHelpers {
 		Member usr = event.getMember().get();
 		long usrId = usr.getId().asLong();
 		long channelId = usr.getPrivateChannel().block().getId().asLong();
-		boolean alreadyQueued = MeetupLinker.queueUser(usrId, RandomStringUtils.randomAlphanumeric(5));
-		if (alreadyQueued)
+		boolean alreadyVerified = MeetupLinker.queueUser(usrId, RandomStringUtils.randomAlphanumeric(5));
+		if (alreadyVerified)
 			return;
 		sendPrivateMessage(channelId, "Hi there! If you want to link your account to meetup, "
 				+ "please respond with your user profile URL in full which should look "

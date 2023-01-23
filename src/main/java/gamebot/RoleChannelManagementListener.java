@@ -3,8 +3,10 @@ package gamebot;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -25,6 +27,7 @@ import discord4j.core.object.entity.channel.TextChannel;
 import discord4j.core.object.reaction.ReactionEmoji;
 import discord4j.core.object.reaction.ReactionEmoji.Custom;
 import meetup.MeetupLinker;
+import meetup.Tuple;
 import reactor.util.Logger;
 import reactor.util.Loggers;
 
@@ -36,6 +39,7 @@ public class RoleChannelManagementListener extends CoreHelpers {
 
 	private static Logger log = Loggers.getLogger("logger");
 	private long ADD_GENRES_HERE = 731850699889049600L;
+	private long GENRES_CATEGORY = 731865676494536764L;
 
 	private HashMap<String, Command> commands = new HashMap<>();
 	private HashMap<String, Long> genreRoles = new HashMap<>();
@@ -102,7 +106,8 @@ public class RoleChannelManagementListener extends CoreHelpers {
 			readDataIntoMap(genreRoles, "genres");		
 			setupReactsOnGenres();
 			MeetupLinker.readVerified();
-			sendMessage(CONSOLE, "Re-synchronised genre and verified lists!");
+			MeetupEventManager.init();
+			sendMessage(CONSOLE, "Re-synchronised genre, verified and event lists!");
 		});
 		commands.put("!add-role", msg -> sendMessage(CONSOLE,
 				"Role " + msg + " of ID " + createRole(msg).getId().asLong() + " created!"));
@@ -114,6 +119,7 @@ public class RoleChannelManagementListener extends CoreHelpers {
 		commands.put("!deny", msg -> {
 			Utils.flipAdminDenial();
 		});
+		commands.put("!add-genre", msg -> addGenre(msg));
 	}
 	
 	private String trimCommand(String string) {
@@ -132,6 +138,18 @@ public class RoleChannelManagementListener extends CoreHelpers {
 			}
 		} catch (IOException e) {
 			log.warn("Failed to read file");
+		}
+	}
+	
+	private void saveDataIntoMap(HashMap<String, Long> map, String fileName) {
+		ArrayList<String> lines = new ArrayList<>();
+		for (Map.Entry<String, Long> entry : map.entrySet()) {
+			lines.add(entry.getKey() + " " + entry.getValue());
+		}
+		try {
+			FileUtils.writeLines(new File(fileName), lines);
+		} catch (IOException e) {
+			log.warn("Failed to save games to file");
 		}
 	}
 
@@ -177,6 +195,47 @@ public class RoleChannelManagementListener extends CoreHelpers {
 		} else {
 			member.removeRole(Snowflake.of(genreRoles.get(emojiName).longValue())).block();
 		}
+	}
+
+	private void addGenre(String msg) {
+		String[] data = msg.split("\\s");
+		if (data.length < 2)
+			return;
+		
+		String emoji = data[data.length-1]; 		
+		String genreName = msg.replace(emoji, "").trim();
+		
+		Guild guild = getGuild();
+		Role everyone = guild.getEveryoneRole().block();
+		Role gameRole = createRole(genreName);
+
+		String channelName = genreName.toLowerCase().replaceAll("\\s", "-");
+
+		HashSet<PermissionOverwrite> permissions = new HashSet<>();
+		permissions.add(PermissionOverwrite.forRole(gameRole.getId(), readSend, PermissionSet.none()));
+		permissions.add(PermissionOverwrite.forRole(everyone.getId(), PermissionSet.none(), readSend));
+
+		guild.createTextChannel(chn -> {
+			chn.setParentId(Snowflake.of(GENRES_CATEGORY));
+			chn.setName(channelName);
+			chn.setTopic(genreName);
+			chn.setPosition(2);
+			chn.setPermissionOverwrites(permissions);
+		}).block();
+
+		// Get Role
+		long roleId = genreRoles.get(channelName).longValue();
+
+		// Put emoji into role list
+		genreRoles.put(emoji, new Long(roleId));
+
+		// React to Game List
+		Message genreMessage = getChannel(ADD_GENRES_HERE).getMessageById(Snowflake.of(731852074706403398L)).block(); // Directly reference the ID instead of doing .getLastMessage() which is failing
+		GuildEmoji genreEmoji = getGuild().getEmojis().filter(p -> p.getName().equals(emoji)).next().block();
+		genreMessage.addReaction(ReactionEmoji.custom(genreEmoji)).block();
+		
+		sendMessage(CONSOLE, genreName + " successfully created! :)");
+		saveDataIntoMap(genreRoles, "genres");
 	}
 
 }

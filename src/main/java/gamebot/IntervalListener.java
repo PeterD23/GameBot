@@ -28,16 +28,17 @@ import reactor.util.Loggers;
 public class IntervalListener extends CoreHelpers {
 
 	private boolean panic = false;
+	private int fetchFrequency = 15;
 	private static Logger log = Loggers.getLogger("logger");
-	
+
 	private long MEETUP = 732273589432090678L;
 	private HashMap<String, Command> commands = new HashMap<>();
 	private String playlist = "1xfucmjxRtcxXolfNaaA5M";
 
-	private final String prependData = "Here is an upcoming event:\n>>> ";
-	
+	private final String prependData = "\nHere is an upcoming event:\n>>> ";
+
 	private static SeleniumDriver driver;
-	
+
 	public void onReady(ReadyEvent event) {
 		init(event);
 		initialiseCommands();
@@ -51,9 +52,8 @@ public class IntervalListener extends CoreHelpers {
 
 		Message message = event.getMessage();
 		Channel chn = message.getChannel().block();
-		if(chn instanceof PrivateChannel)
+		if (chn instanceof PrivateChannel)
 			return; // discard this
-		
 		log.info("MessageCreateEvent fired for Interval Listener");	
 		String msg = message.getContent();
 		Member usr = message.getAuthorAsMember().block();
@@ -87,16 +87,26 @@ public class IntervalListener extends CoreHelpers {
 		commands.put("!fetch-events", msg -> fetchEventData());
 		commands.put("!panic", msg -> panic());
 		commands.put("!unlock", msg -> unlockDriver());
+		commands.put("!set-fetch-freq", msg -> setFetchFrequency(msg));
 	}
-	
+
+	private void setFetchFrequency(String msg) {
+		try {
+			fetchFrequency = Integer.parseInt(msg);
+			sendMessage(CONSOLE, "Set Meetup Fetch Frequency to " + msg + " minutes.");
+		} catch (NumberFormatException e) {
+			sendMessage(CONSOLE, "Not a number. Please specify a number in minutes.");
+		}
+	}
+
 	private void unlockDriver() {
 		driver.unlock();
 		sendMessage(CONSOLE, "Web Driver is now unlocked. I would investigate since this shouldn't happen.");
 	}
-	
+
 	private void panic() {
 		panic = !panic;
-		sendMessage(CONSOLE, "Panic mode is now "+panic);
+		sendMessage(CONSOLE, "Panic mode is now " + panic);
 	}
 
 	private void fetchEventData() {
@@ -113,9 +123,9 @@ public class IntervalListener extends CoreHelpers {
 		for(MeetupEvent event : events) {
 			if(event.toString().equals("err"))
 				continue;
-			String message = prependData + event.toString() + convertAttendees(event.getID());
+			String message = getEveryoneMention() + prependData + event.toString() + convertAttendees(event.getID());
 			String possibleId = MeetupEventManager.hasEvent(event);
-			if(possibleId != "") {
+			if (possibleId != "") {
 				editMessage(MEETUP, possibleId, message);
 			} else {
 				sendMessageIfValid(event, message);
@@ -145,22 +155,22 @@ public class IntervalListener extends CoreHelpers {
 		}
 		return list;
 	}
-	
+
 	private void setPlaylist(String msg) {
 		sendMessage(CONSOLE, "Set playlist to https://open.spotify.com/playlist/" + msg);
 	}
 
 	public void tick() {
-		if(panic) {
+		if (panic) {
 			return;
 		}
 		log.info("IntervalListener is currently ticking");
-
+		handleOnlineEventDeletion();
 		handleReminders();
 		LocalTime time = LocalTime.now();
-		if (time.getHour() == 12 && time.getMinute() == 0) {			
+		if (time.getHour() == 12 && time.getMinute() == 0) {
 			recommendSong();
-		} else if(time.getMinute() % 15 == 0) {
+		} else if (time.getMinute() % fetchFrequency == 0) {
 			fetchEventData();
 			ArrayList<String> pastEvents = MeetupEventManager.scheduleMessagesForDeletion();
 			for(String s : pastEvents) {
@@ -168,22 +178,32 @@ public class IntervalListener extends CoreHelpers {
 				ChannelLogger.logMessage("Deleting message ID"+s+" which is an expired event");
 				deleteMessage(MEETUP, s);
 			}
-		}	
+		}
 	}
-	
+
+	private void handleOnlineEventDeletion() {
+		ArrayList<Long> pastOnlineEvents = EventManager.scheduleMessagesForDeletion();
+		for (Long s : pastOnlineEvents) {
+			log.info("Deleting message ID " + s);
+			deleteMessage(EVENTS, s.toString(), "Online Event has expired");
+		}
+	}
+
 	private void handleReminders() {
 		ArrayList<OnlineEvent> events = EventManager.getEvents();
-		log.info("Handling reminders... Event stack is "+events.size());
-		for(OnlineEvent event : events) {
+		log.info("Handling reminders... Event stack is " + events.size());
+		for (OnlineEvent event : events) {
 			LocalDateTime date = event.getDateTime();
-			log.info("Duration of event from now is "+Duration.between(LocalDateTime.now(), date).toMinutes());
-			if(Duration.between(LocalDateTime.now(), date).toMinutes() < 30 && !event.checkHalfHourReminder()){		
+			long timeToEventMin = Duration.between(LocalDateTime.now(), date).toMinutes();
+			log.info("Duration of event from now is " + timeToEventMin);
+			if (timeToEventMin < 30 && timeToEventMin > 0 && !event.checkHalfHourReminder()) {
 				event.triggerHalfHourReminder();
 				ArrayList<Long> attendees = event.getAttendeesToDM();
 				ChannelLogger.logMessage("Sending reminders to "+attendees.size()+" people for events");
 				for(long attendee : attendees) {
 					long privateChannel = getUserById(attendee).getPrivateChannel().block().getId().asLong();
-					sendPrivateMessage(privateChannel, "You have an event upcoming in less than 30 minutes, check the online events channel for more details!");
+					sendPrivateMessage(privateChannel,
+							"You have an event upcoming in less than 30 minutes, check the online events channel for more details!");
 				}
 			}
 		}

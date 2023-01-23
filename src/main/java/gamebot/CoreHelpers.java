@@ -33,7 +33,7 @@ public class CoreHelpers {
 
 	private GatewayDiscordClient cli;
 
-	private PermissionSet readSend = PermissionSet.of(Permission.VIEW_CHANNEL, Permission.SEND_MESSAGES,
+	protected PermissionSet readSend = PermissionSet.of(Permission.VIEW_CHANNEL, Permission.SEND_MESSAGES,
 			Permission.READ_MESSAGE_HISTORY);
 
 	protected void init(ReadyEvent event) {
@@ -43,6 +43,10 @@ public class CoreHelpers {
 		}).block();
 	}
 
+	protected String getEveryoneMention() {
+		return getGuild().getEveryoneRole().block().getMention();
+	}
+	
 	protected Guild getGuild() {
 		return cli.getGuildById(Snowflake.of(SERVER)).block();
 	}
@@ -103,8 +107,9 @@ public class CoreHelpers {
 		ChannelLogger.logMessage("Editing message ID " + messageId + " with String of length " + newMessage.length());
 	}
 
-	protected void deleteMessage(long channelId, String messageId) {
-		getChannel(channelId).getMessageById(Snowflake.of(messageId));
+	protected void deleteMessage(long channelId, String messageId, String reason) {
+		getChannel(channelId).getMessageById(Snowflake.of(messageId)).block().delete(reason).block();
+		logMessage("Deleting message ID " + messageId + " with reason "+reason);
 	}
 
 	protected String sendMessage(long channelId, String message) {
