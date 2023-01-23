@@ -11,15 +11,13 @@ import com.google.common.io.Files;
 
 public class Status {
 
-	private static CoreHelpers core;
 	private static List<String> statusChecks;
 
-	public static void init(CoreHelpers c) {
-		core = c;
+	public static void init() {
 		try {
 			statusChecks = Files.readLines(new File("statuses"), Charset.defaultCharset());
 		} catch (Exception e) {
-			core.logMessage("Failed to read file");
+			ChannelLogger.logMessage("Failed to read statuses file");
 		}
 	}
 
@@ -52,7 +50,7 @@ public class Status {
 			process.waitFor();
 			return sb.toString();
 		} catch (IOException | InterruptedException e) {
-			core.logMessage("Bash script failed to execute: " + e.getStackTrace()[0]);
+			ChannelLogger.logMessage("Bash script failed to execute: " + e.getStackTrace()[0]);
 			return ":x:";
 		}
 	}

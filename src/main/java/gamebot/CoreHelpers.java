@@ -4,18 +4,18 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.util.ArrayList;
 
-import discord4j.core.DiscordClient;
+import discord4j.common.util.Snowflake;
+import discord4j.core.GatewayDiscordClient;
 import discord4j.core.event.domain.lifecycle.ReadyEvent;
 import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.GuildEmoji;
 import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.Message;
-import discord4j.core.object.entity.PrivateChannel;
 import discord4j.core.object.entity.Role;
-import discord4j.core.object.entity.TextChannel;
-import discord4j.core.object.util.Permission;
-import discord4j.core.object.util.PermissionSet;
-import discord4j.core.object.util.Snowflake;
+import discord4j.core.object.entity.channel.PrivateChannel;
+import discord4j.core.object.entity.channel.TextChannel;
+import discord4j.rest.util.Permission;
+import discord4j.rest.util.PermissionSet;
 import reactor.util.Logger;
 import reactor.util.Loggers;
 
@@ -31,12 +31,10 @@ public class CoreHelpers {
 
 	protected long ADMIN_ROLE = 731604497435983992L;
 
-	private DiscordClient cli;
+	private GatewayDiscordClient cli;
 
 	protected PermissionSet readSend = PermissionSet.of(Permission.VIEW_CHANNEL, Permission.SEND_MESSAGES,
 			Permission.READ_MESSAGE_HISTORY);
-
-	private static Logger log = Loggers.getLogger("logger");
 
 	protected void init(ReadyEvent event) {
 		cli = event.getClient();
@@ -79,7 +77,7 @@ public class CoreHelpers {
 	protected boolean isAdmin(Member usr) {
 		if (Utils.adminsDenied())
 			return false;
-		return usr.getRoles().any(p -> p.getId().asLong() == ADMIN_ROLE).block();
+		return usr.getRoles().any(p -> p.getId().asLong() == ADMIN_ROLE).block().booleanValue();
 	}
 
 	protected Role getRoleById(long id) {
@@ -93,6 +91,11 @@ public class CoreHelpers {
 	protected Member getUserById(long id) {
 		return getGuild().getMembers().filter(p -> p.getId().asLong() == id).next().block();
 	}
+	
+	protected String getUserIfMentionable(long id) {
+		Member member = getUserById(id);
+		return member != null ? member.getMention() : "";
+	}
 
 	protected Member convertUserToMember(long id) {
 		return cli.getUserById(Snowflake.of(id)).block().asMember(Snowflake.of(SERVER)).block();
@@ -101,17 +104,12 @@ public class CoreHelpers {
 	protected void editMessage(long channelId, String messageId, String newMessage) {
 		getChannel(channelId).getMessageById(Snowflake.of(messageId)).block().edit(spec -> spec.setContent(newMessage))
 				.block();
-		logMessage("Editing message ID " + messageId + " with String of length " + newMessage.length());
+		ChannelLogger.logMessage("Editing message ID " + messageId + " with String of length " + newMessage.length());
 	}
 
 	protected void deleteMessage(long channelId, String messageId, String reason) {
 		getChannel(channelId).getMessageById(Snowflake.of(messageId)).block().delete(reason).block();
 		logMessage("Deleting message ID " + messageId + " with reason "+reason);
-	}
-
-	protected void logMessage(String message) {
-		log.info(message);
-		getChannel(LOG).createMessage(message).block().getId().asString();
 	}
 
 	protected String sendMessage(long channelId, String message) {
@@ -121,7 +119,7 @@ public class CoreHelpers {
 	protected String embedImage(long channelId, String imageName) {
 		char ps = File.separatorChar;
 		String filePath = System.getProperty("user.home") + ps + "Pictures" + ps + imageName;
-		logMessage("Looking for " + filePath);
+		ChannelLogger.logMessage("Looking for " + filePath);
 		try (FileInputStream fs = new FileInputStream(filePath)) {
 			String messageId = getChannel(channelId).createMessage(spec -> {
 				spec.addFile(imageName, fs);
@@ -129,7 +127,7 @@ public class CoreHelpers {
 			fs.close();
 			return messageId;
 		} catch (Exception e) {
-			logMessage("Image acquisition failure: " + e.getStackTrace()[0]);
+			ChannelLogger.logMessage("Image acquisition failure: " + e.getStackTrace()[0]);
 			return sendMessage(channelId, "Couldn't find that image, sorry :(");
 		}
 	}

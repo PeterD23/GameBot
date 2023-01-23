@@ -10,5 +10,14 @@ Node 14
 
 ## Setup
 
-- npm run pre-serve
+Add a .env file under /server
+Add the following:
+
+OPEN_CRITIC_API_KEY={KEY_HERE}
+RAPID_API_HOST=opencritic-api.p.rapidapi.com
+
+Then do the following commands:
+
+- npm i
+- npm run build
 - npm run start

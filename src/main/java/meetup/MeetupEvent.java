@@ -49,16 +49,20 @@ public class MeetupEvent {
 	}
 
 	public String getDate() {
-		String[] splitDate = startDateTime.split(", | ");
+		/**
+		 * Split Date: #0 = Day (3 char) #1 = Month (3 char) #2 = Day of Month #3 = Year
+		 * #5 = Time #6 = AM/PM
+		 */
+		String parseableDate;
 		try {
-			String parseableDate = splitDate[0].substring(0, 3) + ", " + splitDate[2] + " "
+			String[] splitDate = startDateTime.split(", | ");
+			parseableDate = splitDate[0].substring(0, 3) + ", " + splitDate[2] + " "
 					+ splitDate[1].substring(0, 3) + " " + splitDate[3] + " " + convertAmPm(splitDate[5], splitDate[6])
 					+ " GMT";
 			return LocalDateTime.parse(parseableDate, DateTimeFormatter.RFC_1123_DATE_TIME).toString();
 		} catch (Exception e) {
-			e.printStackTrace();
-			return LocalDateTime.now().plusMonths(1).toString();
-		}
+			return "err";
+		}	
 	}
 
 	private String convertAmPm(String time, String amPm) {

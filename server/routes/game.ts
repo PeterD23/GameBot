@@ -1,6 +1,37 @@
 import express, { Request, Response } from "express";
+import { OPEN_CRITIC_ERROR } from "../errors";
 const router = express.Router();
-import { getGameHowLongToBeat, getGameRating } from "../utils";
+import { OpenCriticSearchGameObject } from '../interfaces/OpenCritic';
+import { hltbClient } from '../utils/HltbClient';
+import { openCriticClient } from "../utils/openCriticClient";
+
+
+const ACCURACY_THRESHOLD = 0.45;
+const getHltb = async (game: string) => {
+  try {
+    const gameHltb = await hltbClient.search(game);
+    return gameHltb;
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+}
+
+const getRating = async(game: string) => {
+  try { 
+    const foundGame: OpenCriticSearchGameObject = await openCriticClient.search(game);
+
+    if(foundGame.dist > ACCURACY_THRESHOLD) { 
+      throw new OPEN_CRITIC_ERROR('No games found that match accuracy criteria');
+    }
+
+    const rating = await openCriticClient.getGame(foundGame.id);
+    return rating;
+  } catch(error) { 
+    console.error(error);
+    return null;
+  }
+}
 
 router.post("/", async (req: Request, res: Response) => {
   try {
@@ -9,20 +40,9 @@ router.post("/", async (req: Request, res: Response) => {
     if (!game) {
       return res.status(400).json({ error: "Please give a game in the request body" });
     }
-
-    const gameHltb = await getGameHowLongToBeat(game);
-
-    if (!gameHltb) {
-      return res.status(400).json({ error: "Could not find a HLTB for game" });
-    }
-
-    const gameRating = await getGameRating(game);
-
-    if (!gameRating) {
-      return res.status(400).json({ error: "Could not find game rating" });
-    }
-    
-    res.status(200).json({ hltb: gameHltb, rating: gameRating });
+    const gameHltb = await getHltb(game);
+    const rating = await getRating(game);
+    res.status(200).json({ hltb: gameHltb, rating});
   } catch (error) {
     console.error(error);
     res.status(500).json({ error });

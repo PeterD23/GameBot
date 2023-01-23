@@ -8,15 +8,15 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 
+import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.lifecycle.ReadyEvent;
 import discord4j.core.event.domain.message.MessageCreateEvent;
-import discord4j.core.object.entity.Channel;
 import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.Message;
-import discord4j.core.object.entity.PrivateChannel;
-import discord4j.core.object.util.Snowflake;
-import meetup.MeetupEventManager;
+import discord4j.core.object.entity.channel.Channel;
+import discord4j.core.object.entity.channel.PrivateChannel;
 import meetup.MeetupEvent;
+import meetup.MeetupEventManager;
 import meetup.MeetupLinker;
 import meetup.Pair;
 import meetup.SeleniumDriver;
@@ -54,9 +54,8 @@ public class IntervalListener extends CoreHelpers {
 		Channel chn = message.getChannel().block();
 		if (chn instanceof PrivateChannel)
 			return; // discard this
-
-		log.info("MessageCreateEvent fired for Interval Listener");
-		String msg = message.getContent().orElse("");
+		log.info("MessageCreateEvent fired for Interval Listener");	
+		String msg = message.getContent();
 		Member usr = message.getAuthorAsMember().block();
 
 		if (usr.isBot())
@@ -112,43 +111,47 @@ public class IntervalListener extends CoreHelpers {
 
 	private void fetchEventData() {
 		log.info("Fetching events from Meetup");
-		logMessage("Fetching events from Meetup, time is " + LocalTime.now().toString());
-
-		if (driver.isLocked()) {
+		ChannelLogger.logMessage("Fetching events from Meetup, time is "+LocalTime.now().toString());
+		
+		if(driver.isLocked()) {
 			log.info("Driver is currently busy, will try again in 15");
-			logMessage("Driver attempted to fetch events but is currently busy");
+			ChannelLogger.logMessage("Driver attempted to fetch events but is currently busy");
 			return;
 		}
 		ArrayList<MeetupEvent> events = driver.returnEventData();
-		logMessage("Found " + events.size() + " events from Meetup");
-		for (MeetupEvent event : events) {
-			if (event.toString().equals("err"))
+		ChannelLogger.logMessage("Found "+events.size()+" events from Meetup");
+		for(MeetupEvent event : events) {
+			if(event.toString().equals("err"))
 				continue;
 			String message = getEveryoneMention() + prependData + event.toString() + convertAttendees(event.getID());
 			String possibleId = MeetupEventManager.hasEvent(event);
 			if (possibleId != "") {
 				editMessage(MEETUP, possibleId, message);
 			} else {
-				String messageId = sendMessage(MEETUP, message);
-				getChannel(MEETUP).getMessageById(Snowflake.of(new Long(messageId))).block().pin().block();
-				try {
-					MeetupEventManager.addEvent(event.getID(), messageId, event.getDate());
-					logMessage("Added new pinned event to Event List with Message ID " + messageId);
-				} catch (Exception e) {
-					deleteMessage(MEETUP, message, "Corrupted data returned from Meetup. Please fix asap "
-							+ getUserById(97036843924598784L).getMention());
-				}
+				sendMessageIfValid(event, message);
 			}
 		}
 	}
-
+	
+	private void sendMessageIfValid(MeetupEvent event, String message) {
+		boolean validDate = !event.getDate().equals("err");		
+		if(!validDate) {
+			ChannelLogger.logHighPriorityMessage("Unable to parse the date for event "+event.getID()+", using placeholder date.");
+		}
+		String messageId = sendMessage(MEETUP, message);
+		getChannel(MEETUP).getMessageById(Snowflake.of(new Long(messageId))).block().pin().block();
+		MeetupEventManager.addEvent(event.getID(), messageId, validDate ? event.getDate() : "2050-01-01T00:00");
+		ChannelLogger.logMessage("Added new pinned event to Event List");
+	}
+	
+	
 	private String convertAttendees(String eventId) {
 		String list = "\n\n";
 		ArrayList<Pair<String, String>> attendees = driver.collateAttendees(eventId);
-		logMessage("Found " + attendees.size() + " attendees for event " + eventId + " to append");
-		for (Pair<String, String> attendee : attendees) {
-			Long userId = MeetupLinker.getUserByMeetupId(new Long(attendee.second()));
-			list += attendee.first() + (userId != 0L ? ": " + getUserById(userId).getMention() : "") + "\n";
+		ChannelLogger.logMessage("Found "+attendees.size()+" attendees for event "+eventId+" to append");
+		for(Pair<String, String> attendee : attendees) {
+			Long userId = MeetupLinker.getUserByMeetupId(new Long(attendee.second()));		
+			list += attendee.first() + (userId != 0L ? ": "+getUserIfMentionable(userId) : "") +"\n";
 		}
 		return list;
 	}
@@ -170,9 +173,10 @@ public class IntervalListener extends CoreHelpers {
 		} else if (time.getMinute() % fetchFrequency == 0) {
 			fetchEventData();
 			ArrayList<String> pastEvents = MeetupEventManager.scheduleMessagesForDeletion();
-			for (String s : pastEvents) {
-				log.info("Deleting message ID " + s);
-				deleteMessage(MEETUP, s, "Event has expired");
+			for(String s : pastEvents) {
+				log.info("Deleting message ID "+s);
+				ChannelLogger.logMessage("Deleting message ID"+s+" which is an expired event");
+				deleteMessage(MEETUP, s);
 			}
 		}
 	}
@@ -195,8 +199,8 @@ public class IntervalListener extends CoreHelpers {
 			if (timeToEventMin < 30 && timeToEventMin > 0 && !event.checkHalfHourReminder()) {
 				event.triggerHalfHourReminder();
 				ArrayList<Long> attendees = event.getAttendeesToDM();
-				logMessage("Sending reminders to " + attendees.size() + " people for events");
-				for (long attendee : attendees) {
+				ChannelLogger.logMessage("Sending reminders to "+attendees.size()+" people for events");
+				for(long attendee : attendees) {
 					long privateChannel = getUserById(attendee).getPrivateChannel().block().getId().asLong();
 					sendPrivateMessage(privateChannel,
 							"You have an event upcoming in less than 30 minutes, check the online events channel for more details!");
@@ -207,8 +211,8 @@ public class IntervalListener extends CoreHelpers {
 
 	private void recommendSong() {
 		log.info("Scheduled recommendation for music");
-		logMessage("Time is 12 pm, recommending a song from Spotify");
-		if (LocalDateTime.now().getDayOfWeek() == DayOfWeek.FRIDAY) {
+		ChannelLogger.logMessage("Time is 12 pm, recommending a song from Spotify");
+		if(LocalDateTime.now().getDayOfWeek() == DayOfWeek.FRIDAY) {
 			sendMessage(MUSIC, "https://open.spotify.com/track/79ozNtJ4aqVaAav0bqXpji");
 			return;
 		}

@@ -1,6 +1,6 @@
 package gamebot;
 
-import java.awt.Color;
+import discord4j.rest.util.Color;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.net.URL;
@@ -28,7 +28,7 @@ public class Utils {
 		int r = random.nextInt(200) + 55;
 		int g = random.nextInt(200) + 55;
 		int b = random.nextInt(200) + 55;
-		return new Color(r, g, b);
+		return Color.of(r, g, b);
 	}
 	
 	private static String randomHellos[] = new String[] {

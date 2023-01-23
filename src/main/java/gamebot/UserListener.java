@@ -21,19 +21,19 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Iterables;
 
+import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.guild.MemberJoinEvent;
 import discord4j.core.event.domain.lifecycle.ReadyEvent;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.event.domain.message.MessageUpdateEvent;
 import discord4j.core.event.domain.message.ReactionAddEvent;
 import discord4j.core.event.domain.message.ReactionRemoveEvent;
-import discord4j.core.object.entity.Channel;
 import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.Message;
-import discord4j.core.object.entity.PrivateChannel;
 import discord4j.core.object.entity.User;
+import discord4j.core.object.entity.channel.MessageChannel;
+import discord4j.core.object.entity.channel.PrivateChannel;
 import discord4j.core.object.reaction.ReactionEmoji;
-import discord4j.core.object.util.Snowflake;
 import meetup.MeetupLinker;
 import meetup.SeleniumDriver;
 import onlineevent.EventManager;
@@ -62,12 +62,12 @@ public class UserListener extends CoreHelpers {
 			return;
 
 		Message message = event.getMessage();
-		Channel chn = message.getChannel().block();
+		MessageChannel chn = message.getChannel().block();
 		if (chn instanceof PrivateChannel) {
 			User usr = message.getAuthor().get();
 			if (usr.isBot())
 				return;
-			checkIfVerifyingMeetup(usr, event.getMessage().getContent().orElse(""));
+			checkIfVerifyingMeetup(usr, event.getMessage().getContent());
 			return;
 		}
 
@@ -76,7 +76,7 @@ public class UserListener extends CoreHelpers {
 		if (usr.isBot())
 			return;
 
-		String msg = event.getMessage().getContent().orElse("");
+		String msg = event.getMessage().getContent();
 		parseCommand(event, msg);
 		if (chn.getId().asLong() == MUSIC && new Random().nextInt(6) == 5
 				&& msg.startsWith("https://open.spotify.com/track/")) {
@@ -96,7 +96,7 @@ public class UserListener extends CoreHelpers {
 		if (usr.isBot())
 			return;
 
-		String msg = message.getContent().orElse("");
+		String msg = message.getContent();
 		if (msg.startsWith("!verify"))
 			verify(usr, channelId, msg);
 	}
@@ -115,7 +115,7 @@ public class UserListener extends CoreHelpers {
 			OnlineEvent online = events.stream().filter(p -> p.getMessageId() == msg.getId().asLong()).findFirst()
 					.orElse(null);
 			if (online == null) {
-				logMessage("ERROR: An event message was reacted to but with no associated event.");
+				ChannelLogger.logMessage("ERROR: An event message was reacted to but with no associated event.");
 				return;
 			}
 			online.addAttendee(usr.getMention());
@@ -141,7 +141,7 @@ public class UserListener extends CoreHelpers {
 			OnlineEvent online = events.stream().filter(p -> p.getMessageId() == msg.getId().asLong()).findFirst()
 					.orElse(null);
 			if (online == null) {
-				logMessage("ERROR: An event message was reacted to but with no associated event.");
+				ChannelLogger.logMessage("ERROR: An event message was reacted to but with no associated event.");
 				return;
 			}
 			online.removeAttendee(usr.getMention());
@@ -202,7 +202,7 @@ public class UserListener extends CoreHelpers {
 				}
 			}
 		} catch (Exception e) {
-			logMessage("HTTP Post failed with Error: " + e.getStackTrace()[0]);
+			ChannelLogger.logMessage("HTTP Post failed with Error: " + e.getStackTrace()[0]);
 			e.printStackTrace();
 		}
 		long channel = event.getMessage().getChannelId().asLong();
@@ -214,27 +214,28 @@ public class UserListener extends CoreHelpers {
 			sendMessage(channelId, "An error occurred. Please type a valid game!");
 			return;
 		}
-		logMessage("Data returned:\n" + output.toPrettyString());
+		ChannelLogger.logMessage("Data returned:\n" + output.toPrettyString());
 		String name = output.findValue("name").asText();
 		String timeToBeatMain = "Time to Beat Campaign: " + output.findValue("gameplayMain").asText() + " Hours";
 		String timeToBeatExtra = "Time to Beat Extras: " + output.findValue("gameplayMainExtra").asText() + " Hours";
 		String timeToBeatCompletion = "Time to 100%: " + output.findValue("gameplayCompletionist").asText() + " Hours";
 		String openCriticScore = "OpenCritic Score: N/A";
-
+		String hltbAudienceScore = "HLTB Player Score: " + output.findValue("hltbScore").asText();
+		String developer = "Developer: " + output.findValue("developer").asText();
 		try {
 			String openCriticName = Iterables.get(output.findValues("name"), 1).asText();
-			logMessage("Comparing Name:'" + name + "' to OpenCritic Name:'" + openCriticName + "'");
+			ChannelLogger.logMessage("Comparing Name:'" + name + "' to OpenCritic Name:'" + openCriticName + "'");
 			if (name.equals(openCriticName)) {
 				openCriticScore = "OpenCritic Score: " + output.findValue("medianScore").asText();
 			}
 		} catch (Exception e) {
-			logMessage("Could not find OpenCritic node.");
+			ChannelLogger.logMessage("Could not find OpenCritic node.");
 		}
 		String image = name.replaceAll("\\s|\\:|\\,", "").trim().toLowerCase();
 		Utils.downloadJPG("https://howlongtobeat.com" + output.findValue("imageUrl").asText(), image, 100);
 		sendMessage(channelId, "**" + name + "**");
 		embedImage(channelId, image + ".jpg");
-		sendMessage(channelId, Utils.constructMultiLineString(1, timeToBeatMain, timeToBeatExtra, timeToBeatCompletion,
+		sendMessage(channelId, Utils.constructMultiLineString(1, developer, timeToBeatMain, timeToBeatExtra, timeToBeatCompletion, hltbAudienceScore,
 				openCriticScore));
 	}
 
@@ -318,7 +319,7 @@ public class UserListener extends CoreHelpers {
 	}
 
 	private void status(MessageCreateEvent event) {
-		Status.init(this);
+		Status.init();
 		long chn = event.getMessage().getChannelId().asLong();
 		boolean isWindows = System.getProperty("os.name").toLowerCase().startsWith("windows");
 		if (isWindows) {
@@ -333,7 +334,7 @@ public class UserListener extends CoreHelpers {
 		long userId = usr.getId().asLong();
 		long channelId = usr.getPrivateChannel().block().getId().asLong();
 		if (SeleniumDriver.getInstance().isLocked()) {
-			logMessage("User tried to verify identity but browser is currently locked");
+			ChannelLogger.logMessage("User tried to verify identity but browser is currently locked");
 			sendPrivateMessage(channelId,
 					"The browser is currently busy at the moment, try again in a short while! Can't get the staff these days...");
 			return;
@@ -346,7 +347,7 @@ public class UserListener extends CoreHelpers {
 				sendPrivateMessage(channelId,
 						"Cool! I've sent you a message on Meetup, just respond here with the code.");
 			} else if (msg.equals(code)) {
-				logMessage("User " + userId + " was successfully added to Meetup Verified list.");
+				ChannelLogger.logMessage("User " + userId + " was successfully added to Meetup Verified list.");
 				MeetupLinker.verifyUser(userId);
 				sendPrivateMessage(channelId,
 						"Hey! You have been successfully verified! Here, have a role on the house!");
