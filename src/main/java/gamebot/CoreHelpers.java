@@ -16,8 +16,6 @@ import discord4j.core.object.entity.TextChannel;
 import discord4j.core.object.util.Permission;
 import discord4j.core.object.util.PermissionSet;
 import discord4j.core.object.util.Snowflake;
-import reactor.util.Logger;
-import reactor.util.Loggers;
 
 public class CoreHelpers {
 
@@ -35,8 +33,6 @@ public class CoreHelpers {
 
 	private PermissionSet readSend = PermissionSet.of(Permission.VIEW_CHANNEL, Permission.SEND_MESSAGES,
 			Permission.READ_MESSAGE_HISTORY);
-
-	private static Logger log = Loggers.getLogger("logger");
 
 	protected void init(ReadyEvent event) {
 		cli = event.getClient();
@@ -102,16 +98,11 @@ public class CoreHelpers {
 	protected void editMessage(long channelId, String messageId, String newMessage) {
 		getChannel(channelId).getMessageById(Snowflake.of(messageId)).block().edit(spec -> spec.setContent(newMessage))
 				.block();
-		logMessage("Editing message ID " + messageId + " with String of length " + newMessage.length());
+		ChannelLogger.logMessage("Editing message ID " + messageId + " with String of length " + newMessage.length());
 	}
 
 	protected void deleteMessage(long channelId, String messageId) {
 		getChannel(channelId).getMessageById(Snowflake.of(messageId));
-	}
-
-	protected void logMessage(String message) {
-		log.info(message);
-		getChannel(LOG).createMessage(message).block().getId().asString();
 	}
 
 	protected String sendMessage(long channelId, String message) {
@@ -121,7 +112,7 @@ public class CoreHelpers {
 	protected String embedImage(long channelId, String imageName) {
 		char ps = File.separatorChar;
 		String filePath = System.getProperty("user.home") + ps + "Pictures" + ps + imageName;
-		logMessage("Looking for " + filePath);
+		ChannelLogger.logMessage("Looking for " + filePath);
 		try (FileInputStream fs = new FileInputStream(filePath)) {
 			String messageId = getChannel(channelId).createMessage(spec -> {
 				spec.addFile(imageName, fs);
@@ -129,7 +120,7 @@ public class CoreHelpers {
 			fs.close();
 			return messageId;
 		} catch (Exception e) {
-			logMessage("Image acquisition failure: " + e.getStackTrace()[0]);
+			ChannelLogger.logMessage("Image acquisition failure: " + e.getStackTrace()[0]);
 			return sendMessage(channelId, "Couldn't find that image, sorry :(");
 		}
 	}
