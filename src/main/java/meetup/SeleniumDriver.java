@@ -16,6 +16,7 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 
 import com.google.common.io.Files;
 
+import gamebot.ChannelLogger;
 import io.github.bonigarcia.wdm.WebDriverManager;
 import reactor.util.Logger;
 import reactor.util.Loggers;
@@ -123,6 +124,7 @@ public class SeleniumDriver {
 			}
 			return attendeePair;
 		} catch (Exception e) {
+			ChannelLogger.logHighPriorityMessage("Failed to collate attendee list due to "+e.getStackTrace()[0]);
 			return new ArrayList<>();
 		} finally {
 			unlock();
@@ -137,19 +139,20 @@ public class SeleniumDriver {
 			ArrayList<WebElement> cards = Elements(baseXPath);
 			ArrayList<String> urls = new ArrayList<>();
 			for (WebElement card : cards) {
-				log.info("Adding card to list...");
+				ChannelLogger.logMessage("Adding card to list...");
 				urls.add(getEventUrl(card));
 			}
 			for (String url : urls) {
-				log.info("Resolving URL " + url.replace("https://www", ""));
+				log.info("Resolving URL " + url);
+				ChannelLogger.logMessage("Resolving URL " + url.replace("https://www", ""));
 				webDriver.get(url);
 				eventData.add(compileEvent(url));
 				webDriver.get(meetupUrl);
-				log.info("Successfully compiled event");
+				ChannelLogger.logMessage("Successfully compiled event");
 			}
 			return eventData;
 		} catch (Exception e) {
-			log.error("Failed to compile full event data");
+			ChannelLogger.logHighPriorityMessage("Failed to compile event data due to "+e.getStackTrace()[0]);
 			return eventData;
 		} finally {
 			unlock();
@@ -163,8 +166,7 @@ public class SeleniumDriver {
 			event.addId(eventId).addUrl(eventUrl).addName(TextOf(eventName))
 					.addDate(TextOf(eventDate)).addCurrentAttendees(TextOf(attendeeText));
 		} catch (Exception e) {
-			log.error("Could not parse event data.");
-			e.printStackTrace();
+			ChannelLogger.logHighPriorityMessage("Failed to compile full event data due to "+e.getStackTrace()[0]);
 		}
 		return event;
 	}
