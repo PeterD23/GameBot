@@ -5,6 +5,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import discord4j.core.DiscordClient;
+import discord4j.core.GatewayDiscordClient;
 import discord4j.core.event.domain.guild.MemberJoinEvent;
 import discord4j.core.event.domain.lifecycle.ReadyEvent;
 import discord4j.core.event.domain.message.MessageCreateEvent;
@@ -19,7 +20,7 @@ import reactor.core.publisher.Mono;
 
 public class GameBot {
 
-	public static DiscordClient CLIENT;
+	public static GatewayDiscordClient gateway;
 
 	private RoleChannelManagementListener roleListener;
 	private UserListener moderationListener;
@@ -33,36 +34,28 @@ public class GameBot {
 	}
 
 	public void init(String[] args) {
-		try {
-			if (args.length == 0)
-				throw new IllegalArgumentException("Please enter a client key.");
-			roleListener = new RoleChannelManagementListener();
-			moderationListener = new UserListener();
-			intervalListener = new IntervalListener();
+		if (args.length == 0)
+			throw new IllegalArgumentException("Please enter a client key.");
+		roleListener = new RoleChannelManagementListener();
+		moderationListener = new UserListener();
+		intervalListener = new IntervalListener();
 
-			CLIENT = DiscordClient.create(args[0]);
-			Guild guildToLog = CLIENT.getGuildById(Snowflake.of(SERVER_ID)).block();
-			ChannelLogger.init(guildToLog);
-			buildReadyEvent();
-			buildMemberJoinEvent();
-			buildMessageCreateEvent();
-			buildMessageUpdateEvent();
-			buildReactionAddEvent();
-			buildReactionRemoveEvent();
-			MeetupEventManager.init();
-			EventManager.init();
-			buildInterval();
-			SpotifyHelpers.init(args[1], args[2]);
-
-			CLIENT.login().block();
-
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+		DiscordClient client = DiscordClient.create(args[0]);
+		gateway = client.login().block();
+		buildReadyEvent();
+		buildMemberJoinEvent();
+		buildMessageCreateEvent();
+		buildMessageUpdateEvent();
+		buildReactionAddEvent();
+		buildReactionRemoveEvent();
+		MeetupEventManager.init();
+		EventManager.init();
+		buildInterval();
+		SpotifyHelpers.init(args[1], args[2]);
 	}
 
 	private void buildReadyEvent() {
-		CLIENT.getEventDispatcher().on(ReadyEvent.class).flatMap(ready -> {
+		gateway.on(ReadyEvent.class, ready -> {
 			roleListener.onReady(ready);
 			moderationListener.onReady(ready);
 			intervalListener.onReady(ready);
@@ -71,49 +64,36 @@ public class GameBot {
 	}
 
 	private void buildMemberJoinEvent() {
-		CLIENT.getEventDispatcher().on(MemberJoinEvent.class).flatMap(
-				event -> Mono.fromRunnable(() -> moderationListener.newUser(event)).onErrorResume(t -> Mono.empty()))
+		gateway.on(MemberJoinEvent.class, event -> Mono.fromRunnable(() -> 
+		moderationListener.newUser(event)).onErrorResume(t -> Mono.empty()))
 				.subscribe();
 	}
 
 	private void buildMessageCreateEvent() {
-		CLIENT.getEventDispatcher().on(MessageCreateEvent.class).flatMap(event -> Mono.fromRunnable(() -> {
+		gateway.on(MessageCreateEvent.class, event -> Mono.fromRunnable(() -> {
 			roleListener.onMessage(event);
 			moderationListener.onMessage(event);
 			intervalListener.onMessage(event);
-		}).onErrorResume(t -> {
-			t.printStackTrace();
-			return Mono.empty();
 		})).subscribe();
 	}
-	
+
 	private void buildMessageUpdateEvent() {
-		CLIENT.getEventDispatcher().on(MessageUpdateEvent.class).flatMap(event -> Mono.fromRunnable(() -> {
+		gateway.on(MessageUpdateEvent.class, event -> Mono.fromRunnable(() -> {
 			moderationListener.onEdit(event);
-		}).onErrorResume(t -> {
-			t.printStackTrace();
-			return Mono.empty();
 		})).subscribe();
 	}
-	
 
 	private void buildReactionAddEvent() {
-		CLIENT.getEventDispatcher().on(ReactionAddEvent.class).flatMap(event -> Mono.fromRunnable(() -> {
+		gateway.on(ReactionAddEvent.class, event -> Mono.fromRunnable(() -> {
 			roleListener.onReact(event);
 			moderationListener.onReact(event);
-		}).onErrorResume(t -> {
-			t.printStackTrace();
-			return Mono.empty();
 		})).subscribe();
 	}
 
 	private void buildReactionRemoveEvent() {
-		CLIENT.getEventDispatcher().on(ReactionRemoveEvent.class).flatMap(event -> Mono.fromRunnable(() -> {
+		gateway.on(ReactionRemoveEvent.class, event -> Mono.fromRunnable(() -> {
 			roleListener.onUnreact(event);
 			moderationListener.onUnreact(event);
-		}).onErrorResume(t -> {
-			t.printStackTrace();
-			return Mono.empty();
 		})).subscribe();
 	}
 

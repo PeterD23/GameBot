@@ -8,15 +8,15 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 
+import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.lifecycle.ReadyEvent;
 import discord4j.core.event.domain.message.MessageCreateEvent;
-import discord4j.core.object.entity.Channel;
 import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.Message;
-import discord4j.core.object.entity.PrivateChannel;
-import discord4j.core.object.util.Snowflake;
-import meetup.MeetupEventManager;
+import discord4j.core.object.entity.channel.Channel;
+import discord4j.core.object.entity.channel.PrivateChannel;
 import meetup.MeetupEvent;
+import meetup.MeetupEventManager;
 import meetup.MeetupLinker;
 import meetup.Pair;
 import meetup.SeleniumDriver;
@@ -55,7 +55,7 @@ public class IntervalListener extends CoreHelpers {
 			return; // discard this
 		
 		log.info("MessageCreateEvent fired for Interval Listener");	
-		String msg = message.getContent().orElse("");
+		String msg = message.getContent();
 		Member usr = message.getAuthorAsMember().block();
 
 		if (usr.isBot())

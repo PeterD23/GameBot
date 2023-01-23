@@ -11,19 +11,19 @@ import java.util.Map;
 
 import org.apache.commons.io.FileUtils;
 
+import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.lifecycle.ReadyEvent;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.event.domain.message.ReactionAddEvent;
 import discord4j.core.event.domain.message.ReactionRemoveEvent;
-import discord4j.core.object.entity.Channel;
 import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.Message;
-import discord4j.core.object.entity.PrivateChannel;
-import discord4j.core.object.entity.TextChannel;
 import discord4j.core.object.entity.User;
+import discord4j.core.object.entity.channel.Channel;
+import discord4j.core.object.entity.channel.PrivateChannel;
+import discord4j.core.object.entity.channel.TextChannel;
 import discord4j.core.object.reaction.ReactionEmoji;
 import discord4j.core.object.reaction.ReactionEmoji.Custom;
-import discord4j.core.object.util.Snowflake;
 import meetup.MeetupLinker;
 import reactor.util.Logger;
 import reactor.util.Loggers;
@@ -59,7 +59,7 @@ public class RoleChannelManagementListener extends CoreHelpers {
 			return; // discard pm
 		
 		log.info("MessageCreateEvent fired for Role Listener");		
-		String msg = message.getContent().orElse("");
+		String msg = message.getContent();
 		Member usr = message.getAuthorAsMember().block();
 
 		if (usr.isBot())
@@ -137,7 +137,7 @@ public class RoleChannelManagementListener extends CoreHelpers {
 
 	private void setupReactsOnGenres() {
 		TextChannel chn = getChannel(ADD_GENRES_HERE);
-		Message msg = chn.getLastMessage().block();
+		Message msg = chn.getMessageById(Snowflake.of(731852074706403398L)).block();
 		Iterator<?> it = genreRoles.entrySet().iterator();
 		while (it.hasNext()) {
 			Map.Entry<?,?> pair = (Map.Entry<?,?>) it.next();
@@ -163,7 +163,7 @@ public class RoleChannelManagementListener extends CoreHelpers {
 	private void checkIfDisablingTestMode(MessageCreateEvent event) {
 		Message message = event.getMessage();
 		Channel chn = message.getChannel().block();
-		if (chn.getId().asLong() == CONSOLE && message.getContent().get().equals("!test")) {
+		if (chn.getId().asLong() == CONSOLE && message.getContent().equals("!test")) {
 			Utils.flipTestMode();
 			sendMessage(CONSOLE,
 					"Testing mode is now disabled. Be sure to not be running the bot locally to avoid action duplication.");

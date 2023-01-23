@@ -4,18 +4,20 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.util.ArrayList;
 
-import discord4j.core.DiscordClient;
+import discord4j.common.util.Snowflake;
+import discord4j.core.GatewayDiscordClient;
 import discord4j.core.event.domain.lifecycle.ReadyEvent;
 import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.GuildEmoji;
 import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.Message;
-import discord4j.core.object.entity.PrivateChannel;
 import discord4j.core.object.entity.Role;
-import discord4j.core.object.entity.TextChannel;
-import discord4j.core.object.util.Permission;
-import discord4j.core.object.util.PermissionSet;
-import discord4j.core.object.util.Snowflake;
+import discord4j.core.object.entity.channel.PrivateChannel;
+import discord4j.core.object.entity.channel.TextChannel;
+import discord4j.rest.util.Permission;
+import discord4j.rest.util.PermissionSet;
+import reactor.util.Logger;
+import reactor.util.Loggers;
 
 public class CoreHelpers {
 
@@ -29,7 +31,7 @@ public class CoreHelpers {
 
 	protected long ADMIN_ROLE = 731604497435983992L;
 
-	private DiscordClient cli;
+	private GatewayDiscordClient cli;
 
 	private PermissionSet readSend = PermissionSet.of(Permission.VIEW_CHANNEL, Permission.SEND_MESSAGES,
 			Permission.READ_MESSAGE_HISTORY);
@@ -71,7 +73,7 @@ public class CoreHelpers {
 	protected boolean isAdmin(Member usr) {
 		if (Utils.adminsDenied())
 			return false;
-		return usr.getRoles().any(p -> p.getId().asLong() == ADMIN_ROLE).block();
+		return usr.getRoles().any(p -> p.getId().asLong() == ADMIN_ROLE).block().booleanValue();
 	}
 
 	protected Role getRoleById(long id) {
