@@ -1,9 +1,9 @@
 package gamebot;
 
+import discord4j.common.util.Snowflake;
 import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.Member;
-import discord4j.core.object.entity.TextChannel;
-import discord4j.core.object.util.Snowflake;
+import discord4j.core.object.entity.channel.TextChannel;
 import reactor.util.Logger;
 import reactor.util.Loggers;
 

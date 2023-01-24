@@ -12,8 +12,6 @@ import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.event.domain.message.MessageUpdateEvent;
 import discord4j.core.event.domain.message.ReactionAddEvent;
 import discord4j.core.event.domain.message.ReactionRemoveEvent;
-import discord4j.core.object.entity.Guild;
-import discord4j.core.object.util.Snowflake;
 import meetup.MeetupEventManager;
 import onlineevent.EventManager;
 import reactor.core.publisher.Mono;
@@ -52,6 +50,8 @@ public class GameBot {
 		EventManager.init();
 		buildInterval();
 		SpotifyHelpers.init(args[1], args[2]);
+		
+		gateway.onDisconnect().block();
 	}
 
 	private void buildReadyEvent() {

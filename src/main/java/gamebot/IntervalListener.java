@@ -139,7 +139,7 @@ public class IntervalListener extends CoreHelpers {
 			ChannelLogger.logHighPriorityMessage("Unable to parse the date for event "+event.getID()+", using placeholder date.");
 		}
 		String messageId = sendMessage(MEETUP, message);
-		getChannel(MEETUP).getMessageById(Snowflake.of(new Long(messageId))).block().pin().block();
+		getChannel(MEETUP).getMessageById(Snowflake.of(messageId)).block().pin().block();
 		MeetupEventManager.addEvent(event.getID(), messageId, validDate ? event.getDate() : "2050-01-01T00:00");
 		ChannelLogger.logMessage("Added new pinned event to Event List");
 	}
@@ -175,8 +175,7 @@ public class IntervalListener extends CoreHelpers {
 			ArrayList<String> pastEvents = MeetupEventManager.scheduleMessagesForDeletion();
 			for(String s : pastEvents) {
 				log.info("Deleting message ID "+s);
-				ChannelLogger.logMessage("Deleting message ID"+s+" which is an expired event");
-				deleteMessage(MEETUP, s);
+				deleteMessage(MEETUP, s, "Expired Event");
 			}
 		}
 	}
