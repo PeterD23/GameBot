@@ -136,6 +136,8 @@ public class SeleniumDriver {
 		ArrayList<MeetupEvent> eventData = new ArrayList<>();
 		try {		
 			webDriver.get(meetupUrl);
+			if(!doesElementExist(baseXPath, "Checking to see if there are any events"))
+				return eventData;
 			ArrayList<WebElement> cards = Elements(baseXPath);
 			ArrayList<String> urls = new ArrayList<>();
 			for (WebElement card : cards) {
@@ -169,6 +171,16 @@ public class SeleniumDriver {
 			ChannelLogger.logHighPriorityMessage("Failed to compile full event data due to "+e.getStackTrace()[0]);
 		}
 		return event;
+	}
+	
+	private boolean doesElementExist(String xpath, String reason) {
+		try {
+			wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath(xpath)));
+			return true;
+		} catch (Exception e) {
+			ChannelLogger.logMessage(reason + ": Could not find element");
+			return false;
+		}
 	}
 
 	private String extractIdFromMeetupUrl(String url) {
