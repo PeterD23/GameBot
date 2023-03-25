@@ -1,4 +1,4 @@
-package gamebot;
+package gamebot.listeners;
 
 import java.io.File;
 import java.io.IOException;
@@ -31,12 +31,14 @@ import discord4j.core.object.entity.channel.TextChannel;
 import discord4j.core.object.reaction.ReactionEmoji;
 import discord4j.core.object.reaction.ReactionEmoji.Custom;
 import discord4j.rest.util.PermissionSet;
+import gamebot.CoreHelpers;
+import gamebot.Utils;
 import meetup.MeetupEventManager;
 import meetup.MeetupLinker;
 import reactor.util.Logger;
 import reactor.util.Loggers;
 
-public class RoleChannelManagementListener extends CoreHelpers {
+public class RoleChannelManagementListener extends CoreHelpers implements IListener {
 
 	private interface Command {
 		void execute(String command);
@@ -242,5 +244,4 @@ public class RoleChannelManagementListener extends CoreHelpers {
 		sendMessage(CONSOLE, genreName + " successfully created! :)");
 		saveDataIntoMap(genreRoles, "genres");
 	}
-
 }

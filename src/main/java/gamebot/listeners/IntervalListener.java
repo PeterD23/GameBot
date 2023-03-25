@@ -1,4 +1,4 @@
-package gamebot;
+package gamebot.listeners;
 
 import java.time.DayOfWeek;
 import java.time.Duration;
@@ -9,12 +9,21 @@ import java.util.Arrays;
 import java.util.HashMap;
 
 import discord4j.common.util.Snowflake;
+import discord4j.core.event.domain.guild.MemberJoinEvent;
 import discord4j.core.event.domain.lifecycle.ReadyEvent;
 import discord4j.core.event.domain.message.MessageCreateEvent;
+import discord4j.core.event.domain.message.MessageUpdateEvent;
+import discord4j.core.event.domain.message.ReactionAddEvent;
+import discord4j.core.event.domain.message.ReactionRemoveEvent;
 import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.Message;
 import discord4j.core.object.entity.channel.Channel;
 import discord4j.core.object.entity.channel.PrivateChannel;
+import gamebot.ChannelLogger;
+import gamebot.Command;
+import gamebot.CoreHelpers;
+import gamebot.SpotifyHelpers;
+import gamebot.Utils;
 import meetup.MeetupEvent;
 import meetup.MeetupEventManager;
 import meetup.MeetupLinker;
@@ -25,7 +34,7 @@ import onlineevent.OnlineEvent;
 import reactor.util.Logger;
 import reactor.util.Loggers;
 
-public class IntervalListener extends CoreHelpers {
+public class IntervalListener extends CoreHelpers implements IListener {
 
 	private boolean panic = false;
 	private int fetchFrequency = 15;
