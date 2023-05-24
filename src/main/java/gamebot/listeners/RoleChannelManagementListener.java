@@ -1,4 +1,4 @@
-package gamebot;
+package gamebot.listeners;
 
 import java.io.File;
 import java.io.IOException;
@@ -18,20 +18,27 @@ import discord4j.core.event.domain.lifecycle.ReadyEvent;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.event.domain.message.ReactionAddEvent;
 import discord4j.core.event.domain.message.ReactionRemoveEvent;
+import discord4j.core.object.PermissionOverwrite;
+import discord4j.core.object.entity.Guild;
+import discord4j.core.object.entity.GuildEmoji;
 import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.Message;
+import discord4j.core.object.entity.Role;
 import discord4j.core.object.entity.User;
 import discord4j.core.object.entity.channel.Channel;
 import discord4j.core.object.entity.channel.PrivateChannel;
 import discord4j.core.object.entity.channel.TextChannel;
 import discord4j.core.object.reaction.ReactionEmoji;
 import discord4j.core.object.reaction.ReactionEmoji.Custom;
+import discord4j.rest.util.PermissionSet;
+import gamebot.CoreHelpers;
+import gamebot.Utils;
+import meetup.MeetupEventManager;
 import meetup.MeetupLinker;
-import meetup.Tuple;
 import reactor.util.Logger;
 import reactor.util.Loggers;
 
-public class RoleChannelManagementListener extends CoreHelpers {
+public class RoleChannelManagementListener extends CoreHelpers implements IListener {
 
 	private interface Command {
 		void execute(String command);
@@ -61,8 +68,7 @@ public class RoleChannelManagementListener extends CoreHelpers {
 		Channel chn = message.getChannel().block();
 		if(chn instanceof PrivateChannel)
 			return; // discard pm
-		
-		log.info("MessageCreateEvent fired for Role Listener");		
+			
 		String msg = message.getContent();
 		Member usr = message.getAuthorAsMember().block();
 
@@ -237,5 +243,4 @@ public class RoleChannelManagementListener extends CoreHelpers {
 		sendMessage(CONSOLE, genreName + " successfully created! :)");
 		saveDataIntoMap(genreRoles, "genres");
 	}
-
 }

@@ -1,4 +1,4 @@
-package gamebot;
+package gamebot.listeners;
 
 import java.time.DayOfWeek;
 import java.time.Duration;
@@ -15,6 +15,11 @@ import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.Message;
 import discord4j.core.object.entity.channel.Channel;
 import discord4j.core.object.entity.channel.PrivateChannel;
+import gamebot.ChannelLogger;
+import gamebot.Command;
+import gamebot.CoreHelpers;
+import gamebot.SpotifyHelpers;
+import gamebot.Utils;
 import meetup.MeetupEvent;
 import meetup.MeetupEventManager;
 import meetup.MeetupLinker;
@@ -25,7 +30,7 @@ import onlineevent.OnlineEvent;
 import reactor.util.Logger;
 import reactor.util.Loggers;
 
-public class IntervalListener extends CoreHelpers {
+public class IntervalListener extends CoreHelpers implements IListener {
 
 	private boolean panic = false;
 	private int fetchFrequency = 15;
@@ -136,10 +141,10 @@ public class IntervalListener extends CoreHelpers {
 	private void sendMessageIfValid(MeetupEvent event, String message) {
 		boolean validDate = !event.getDate().equals("err");		
 		if(!validDate) {
-			ChannelLogger.logHighPriorityMessage("Unable to parse the date for event "+event.getID()+", using placeholder date.");
+			ChannelLogger.logMessage("Unable to parse the date for event "+event.getID()+", using placeholder date.");
 		}
 		String messageId = sendMessage(MEETUP, message);
-		getChannel(MEETUP).getMessageById(Snowflake.of(new Long(messageId))).block().pin().block();
+		getChannel(MEETUP).getMessageById(Snowflake.of(messageId)).block().pin().block();
 		MeetupEventManager.addEvent(event.getID(), messageId, validDate ? event.getDate() : "2050-01-01T00:00");
 		ChannelLogger.logMessage("Added new pinned event to Event List");
 	}
@@ -150,7 +155,7 @@ public class IntervalListener extends CoreHelpers {
 		ArrayList<Pair<String, String>> attendees = driver.collateAttendees(eventId);
 		ChannelLogger.logMessage("Found "+attendees.size()+" attendees for event "+eventId+" to append");
 		for(Pair<String, String> attendee : attendees) {
-			Long userId = MeetupLinker.getUserByMeetupId(new Long(attendee.second()));		
+			long userId = MeetupLinker.getUserByMeetupId(Long.parseLong(attendee.second()));		
 			list += attendee.first() + (userId != 0L ? ": "+getUserIfMentionable(userId) : "") +"\n";
 		}
 		return list;
@@ -175,8 +180,7 @@ public class IntervalListener extends CoreHelpers {
 			ArrayList<String> pastEvents = MeetupEventManager.scheduleMessagesForDeletion();
 			for(String s : pastEvents) {
 				log.info("Deleting message ID "+s);
-				ChannelLogger.logMessage("Deleting message ID"+s+" which is an expired event");
-				deleteMessage(MEETUP, s);
+				deleteMessage(MEETUP, s, "Expired Event");
 			}
 		}
 	}

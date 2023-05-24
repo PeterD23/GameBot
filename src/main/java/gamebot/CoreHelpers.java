@@ -16,8 +16,6 @@ import discord4j.core.object.entity.channel.PrivateChannel;
 import discord4j.core.object.entity.channel.TextChannel;
 import discord4j.rest.util.Permission;
 import discord4j.rest.util.PermissionSet;
-import reactor.util.Logger;
-import reactor.util.Loggers;
 
 public class CoreHelpers {
 
@@ -109,7 +107,7 @@ public class CoreHelpers {
 
 	protected void deleteMessage(long channelId, String messageId, String reason) {
 		getChannel(channelId).getMessageById(Snowflake.of(messageId)).block().delete(reason).block();
-		logMessage("Deleting message ID " + messageId + " with reason "+reason);
+		ChannelLogger.logMessage("Deleting message ID " + messageId + " with reason "+reason);
 	}
 
 	protected String sendMessage(long channelId, String message) {

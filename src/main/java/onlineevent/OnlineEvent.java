@@ -64,6 +64,10 @@ public class OnlineEvent {
 	public long getMessageId() {
 		return messageId;
 	}
+	
+	public Long getMessageIdLong() {
+		return new Long(messageId);
+	}
 
 	public void addMessageId(long messageId) {
 		this.messageId = messageId;

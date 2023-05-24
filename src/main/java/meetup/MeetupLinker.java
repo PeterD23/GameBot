@@ -15,6 +15,7 @@ import reactor.util.Loggers;
 
 public class MeetupLinker {
 
+	// Hey Java Generics, can you fucking please support primitive types so I don't have to keep boxing and unboxing shit
 	private static Logger log = Loggers.getLogger("logger");
 	private static HashMap<Long, String> queuedUsers = new HashMap<>();
 	private static HashMap<Long, Long> tempLinked = new HashMap<>();
@@ -51,43 +52,49 @@ public class MeetupLinker {
 		return verified;
 	}
 	
-	public static boolean queueUser(Long userId, String code) {
-		if(verified.get(userId) != null) {
+	public static boolean queueUser(long userId, String code) {
+		// The white zone is for the boxing and unboxing of longs only
+		// Listen, Betty, dont start up with your white zone shit again 
+		Long userIdLong = new Long(userId);
+		if(verified.get(userIdLong) != null) {
 			return true;
 		}
 		log.info("Queuing Member ID "+ userId + " with a temp verification code of "+code);
-		queuedUsers.put(userId, code);
+		queuedUsers.put(userIdLong, code);
 		return false;
 	}
 	
-	public static Long getUserByMeetupId(Long id) {
+	public static long getUserByMeetupId(long id) {
 		log.info("Searching for id "+id+"... in verified set of "+verified.size());
 		for (Map.Entry<Long, Long> entry : verified.entrySet()) {
-		    if(id.longValue() == entry.getValue().longValue()) {
+		    if(id == entry.getValue().longValue()) {
 		    	log.info("Found!");
-		    	return entry.getKey();
+		    	return entry.getKey().longValue();
 		    }
 		}
 		log.info("Not found, returning zero");
 		return 0L;
 	}
 	
-	public static boolean isQueued(Long userId) {
-		return queuedUsers.get(userId) != null;
+	public static boolean isQueued(long userId) {
+		Long userIdLong = new Long(userId);
+		return queuedUsers.get(userIdLong) != null;
 	}
 	
-	public static String getUsersCode(Long userId) {
-		return queuedUsers.get(userId);
+	public static String getUsersCode(long userId) {
+		Long userIdLong = new Long(userId);
+		return queuedUsers.get(userIdLong);
 	}
 	
-	public static void addMeetupId(Long userId, Long meetupId) {
-		tempLinked.put(userId, meetupId);
+	public static void addMeetupId(long userId, long meetupId) {
+		tempLinked.put(new Long(userId), new Long(meetupId));
 	}
 	
-	public static void verifyUser(Long userId) {
-		verified.put(userId, tempLinked.get(userId));
-		tempLinked.remove(userId);
-		queuedUsers.remove(userId);
+	public static void verifyUser(long userId) {
+		Long userIdLong = new Long(userId);
+		verified.put(userIdLong, tempLinked.get(userIdLong));
+		tempLinked.remove(userIdLong);
+		queuedUsers.remove(userIdLong);
 		saveVerified();
 	}
 }

@@ -38,8 +38,8 @@ public class EventManager {
 		ArrayList<Long> toRemove = events.stream().filter(o -> {
 			LocalDateTime check = o.getDateTime().plusHours(8);
 			return time.compareTo(check) > 0; 
-		}).map(o -> o.getMessageId()).collect(Collectors.toCollection(ArrayList::new));
-		events.removeIf(o -> toRemove.contains(o.getMessageId()));
+		}).map(o -> o.getMessageIdLong()).collect(Collectors.toCollection(ArrayList::new));
+		events.removeIf(o -> toRemove.contains(o.getMessageIdLong()));
 		log.info("Found "+toRemove.size()+ ", Online Events list now contains "+events.size());
 		saveEventData();
 		return toRemove;

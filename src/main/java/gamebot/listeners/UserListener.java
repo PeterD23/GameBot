@@ -1,4 +1,4 @@
-package gamebot;
+package gamebot.listeners;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -34,6 +34,11 @@ import discord4j.core.object.entity.User;
 import discord4j.core.object.entity.channel.MessageChannel;
 import discord4j.core.object.entity.channel.PrivateChannel;
 import discord4j.core.object.reaction.ReactionEmoji;
+import gamebot.ChannelLogger;
+import gamebot.CoreHelpers;
+import gamebot.Status;
+import gamebot.UserCommand;
+import gamebot.Utils;
 import meetup.MeetupLinker;
 import meetup.SeleniumDriver;
 import onlineevent.EventManager;
@@ -42,7 +47,7 @@ import onlineevent.Poll;
 import reactor.util.Logger;
 import reactor.util.Loggers;
 
-public class UserListener extends CoreHelpers {
+public class UserListener extends CoreHelpers implements IListener {
 
 	private static Logger log = Loggers.getLogger("logger");
 	private long INTRODUCTIONS = 732247266173124648L;
@@ -153,7 +158,7 @@ public class UserListener extends CoreHelpers {
 		}
 	}
 
-	public void newUser(MemberJoinEvent event) {
+	public void onMemberJoin(MemberJoinEvent event) {
 		if (Utils.isTestingMode())
 			return;
 
@@ -232,7 +237,7 @@ public class UserListener extends CoreHelpers {
 			ChannelLogger.logMessage("Could not find OpenCritic node.");
 		}
 		String image = name.replaceAll("\\s|\\:|\\,", "").trim().toLowerCase();
-		Utils.downloadJPG("https://howlongtobeat.com" + output.findValue("imageUrl").asText(), image, 100);
+		Utils.downloadJPG("https://howlongtobeat.com/games/" + output.findValue("imageUrl").asText(), image, 100);
 		sendMessage(channelId, "**" + name + "**");
 		embedImage(channelId, image + ".jpg");
 		sendMessage(channelId, Utils.constructMultiLineString(1, developer, timeToBeatMain, timeToBeatExtra, timeToBeatCompletion, hltbAudienceScore,
@@ -271,7 +276,7 @@ public class UserListener extends CoreHelpers {
 		}
 		Poll poll = new Poll(message);
 		String id = sendMessage(chn, getRoleByName("Poll Watcher").getMention() + "\n\n" + poll.printPoll());
-		Message pollMsg = getMessage(chn, new Long(id));
+		Message pollMsg = getMessage(chn, Long.parseLong(id));
 		pollMsg.pin().block();
 		poll.react(pollMsg);
 		restrictPoll(usr, LocalDateTime.now().plusMinutes(15));
@@ -295,8 +300,8 @@ public class UserListener extends CoreHelpers {
 		}
 		String messageId = sendMessage(EVENTS,
 				getRoleByName("Event Watcher").getMention() + "\n\n" + onlineEvent.toString());
-		onlineEvent.addMessageId(new Long(messageId));
-		Message eventMsg = getMessage(chn, new Long(messageId));
+		onlineEvent.addMessageId(Long.parseLong(messageId));
+		Message eventMsg = getMessage(chn, Long.parseLong(messageId));
 		eventMsg.pin().block();
 		eventMsg.addReaction(ReactionEmoji.unicode("\u2705")).block();
 		EventManager.add(onlineEvent);
