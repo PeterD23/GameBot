@@ -124,7 +124,7 @@ public class SeleniumDriver {
 			}
 			return attendeePair;
 		} catch (Exception e) {
-			ChannelLogger.logHighPriorityMessage("Failed to collate attendee list due to "+e.getStackTrace()[0]);
+			ChannelLogger.logHighPriorityMessage("Failed to collate attendee list.", e);
 			return new ArrayList<>();
 		} finally {
 			unlock();
@@ -154,7 +154,7 @@ public class SeleniumDriver {
 			}
 			return eventData;
 		} catch (Exception e) {
-			ChannelLogger.logHighPriorityMessage("Failed to compile event data due to "+e.getStackTrace()[0]);
+			ChannelLogger.logHighPriorityMessage("Failed to compile full event data.",e);
 			return eventData;
 		} finally {
 			unlock();
@@ -168,7 +168,7 @@ public class SeleniumDriver {
 			event.addId(eventId).addUrl(eventUrl).addName(TextOf(eventName))
 					.addDate(TextOf(eventDate)).addCurrentAttendees(TextOf(attendeeText));
 		} catch (Exception e) {
-			ChannelLogger.logHighPriorityMessage("Failed to compile full event data due to "+e.getStackTrace()[0]);
+			ChannelLogger.logHighPriorityMessage("Failed to compile full event data.",e);
 		}
 		return event;
 	}

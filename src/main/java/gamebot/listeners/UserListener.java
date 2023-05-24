@@ -276,7 +276,7 @@ public class UserListener extends CoreHelpers implements IListener {
 		}
 		Poll poll = new Poll(message);
 		String id = sendMessage(chn, getRoleByName("Poll Watcher").getMention() + "\n\n" + poll.printPoll());
-		Message pollMsg = getMessage(chn, new Long(id));
+		Message pollMsg = getMessage(chn, Long.parseLong(id));
 		pollMsg.pin().block();
 		poll.react(pollMsg);
 		restrictPoll(usr, LocalDateTime.now().plusMinutes(15));
@@ -300,8 +300,8 @@ public class UserListener extends CoreHelpers implements IListener {
 		}
 		String messageId = sendMessage(EVENTS,
 				getRoleByName("Event Watcher").getMention() + "\n\n" + onlineEvent.toString());
-		onlineEvent.addMessageId(new Long(messageId));
-		Message eventMsg = getMessage(chn, new Long(messageId));
+		onlineEvent.addMessageId(Long.parseLong(messageId));
+		Message eventMsg = getMessage(chn, Long.parseLong(messageId));
 		eventMsg.pin().block();
 		eventMsg.addReaction(ReactionEmoji.unicode("\u2705")).block();
 		EventManager.add(onlineEvent);

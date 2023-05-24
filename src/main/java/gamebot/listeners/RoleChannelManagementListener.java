@@ -68,8 +68,7 @@ public class RoleChannelManagementListener extends CoreHelpers implements IListe
 		Channel chn = message.getChannel().block();
 		if(chn instanceof PrivateChannel)
 			return; // discard pm
-		
-		log.info("MessageCreateEvent fired for Role Listener");		
+			
 		String msg = message.getContent();
 		Member usr = message.getAuthorAsMember().block();
 

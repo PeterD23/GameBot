@@ -28,21 +28,20 @@ public class GameBot {
 	public static GatewayDiscordClient gateway;
 	private ArrayList<IListener> listeners = new ArrayList<>();
 	private long SERVER = 731597823640076319L;
-	
+
 	public static void main(String[] args) {
-		GameBot bot = new GameBot();
-		bot.init(args);
+		new GameBot().init(args);
 	}
 
 	public void init(String[] args) {
 		if (args.length == 0)
 			throw new IllegalArgumentException("Please enter a client key.");
-		
+
 		IntervalListener interval = new IntervalListener();
 		listeners.add(new RoleChannelManagementListener());
 		listeners.add(new UserListener());
 		listeners.add(interval);
-		
+
 		DiscordClient client = DiscordClient.create(args[0]);
 		gateway = client.login().block();
 		buildReadyEvent();
@@ -55,7 +54,7 @@ public class GameBot {
 		EventManager.init();
 		buildInterval(interval);
 		SpotifyHelpers.init(args[1], args[2]);
-		
+
 		gateway.onDisconnect().block();
 	}
 
@@ -69,33 +68,37 @@ public class GameBot {
 	}
 
 	private void buildMemberJoinEvent() {
-		gateway.on(MemberJoinEvent.class, event -> Mono.fromRunnable(() -> 
-		listeners.forEach(element -> element.onMemberJoin(event))).onErrorResume(t -> Mono.empty()))
+		gateway.on(MemberJoinEvent.class,
+				event -> Mono.fromRunnable(() -> listeners.forEach(element -> element.onMemberJoin(event)))
+						.onErrorResume(t -> Mono.empty()))
 				.subscribe();
 	}
 
 	private void buildMessageCreateEvent() {
 		gateway.on(MessageCreateEvent.class, event -> Mono.fromRunnable(() -> {
 			listeners.forEach(element -> element.onMessage(event));
-		})).subscribe();
+		})).onErrorResume(t -> { 
+			ChannelLogger.logHighPriorityMessage("MessageCreateEvent error occurred.", t);
+			return Mono.empty();
+		}).subscribe();
 	}
 
 	private void buildMessageUpdateEvent() {
 		gateway.on(MessageUpdateEvent.class, event -> Mono.fromRunnable(() -> {
 			listeners.forEach(element -> element.onEdit(event));
-		})).subscribe();
+		})).onErrorResume(t -> Mono.empty()).subscribe();
 	}
 
 	private void buildReactionAddEvent() {
 		gateway.on(ReactionAddEvent.class, event -> Mono.fromRunnable(() -> {
 			listeners.forEach(element -> element.onReact(event));
-		})).subscribe();
+		})).onErrorResume(t -> Mono.empty()).subscribe();
 	}
 
 	private void buildReactionRemoveEvent() {
 		gateway.on(ReactionRemoveEvent.class, event -> Mono.fromRunnable(() -> {
 			listeners.forEach(element -> element.onUnreact(event));
-		})).subscribe();
+		})).onErrorResume(t -> Mono.empty()).subscribe();
 	}
 
 	private void buildInterval(IntervalListener interval) {

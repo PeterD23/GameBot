@@ -9,12 +9,8 @@ import java.util.Arrays;
 import java.util.HashMap;
 
 import discord4j.common.util.Snowflake;
-import discord4j.core.event.domain.guild.MemberJoinEvent;
 import discord4j.core.event.domain.lifecycle.ReadyEvent;
 import discord4j.core.event.domain.message.MessageCreateEvent;
-import discord4j.core.event.domain.message.MessageUpdateEvent;
-import discord4j.core.event.domain.message.ReactionAddEvent;
-import discord4j.core.event.domain.message.ReactionRemoveEvent;
 import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.Message;
 import discord4j.core.object.entity.channel.Channel;
@@ -145,7 +141,7 @@ public class IntervalListener extends CoreHelpers implements IListener {
 	private void sendMessageIfValid(MeetupEvent event, String message) {
 		boolean validDate = !event.getDate().equals("err");		
 		if(!validDate) {
-			ChannelLogger.logHighPriorityMessage("Unable to parse the date for event "+event.getID()+", using placeholder date.");
+			ChannelLogger.logMessage("Unable to parse the date for event "+event.getID()+", using placeholder date.");
 		}
 		String messageId = sendMessage(MEETUP, message);
 		getChannel(MEETUP).getMessageById(Snowflake.of(messageId)).block().pin().block();
@@ -159,7 +155,7 @@ public class IntervalListener extends CoreHelpers implements IListener {
 		ArrayList<Pair<String, String>> attendees = driver.collateAttendees(eventId);
 		ChannelLogger.logMessage("Found "+attendees.size()+" attendees for event "+eventId+" to append");
 		for(Pair<String, String> attendee : attendees) {
-			Long userId = MeetupLinker.getUserByMeetupId(new Long(attendee.second()));		
+			long userId = MeetupLinker.getUserByMeetupId(Long.parseLong(attendee.second()));		
 			list += attendee.first() + (userId != 0L ? ": "+getUserIfMentionable(userId) : "") +"\n";
 		}
 		return list;

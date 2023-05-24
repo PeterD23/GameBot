@@ -51,7 +51,7 @@ public class SpotifyHelpers extends CoreHelpers {
 		Random random = new Random();		
 		try {
 			Paging<PlaylistTrack> tracks = itemsRequest.execute();
-			int song = random.nextInt(tracks.getTotal().intValue());
+			Integer song = new Integer(random.nextInt(tracks.getTotal().intValue()));
 			
 			itemsRequest = api.getPlaylistsItems(playlistId).offset(song).build();
 			PlaylistTrack track = itemsRequest.execute().getItems()[0];
