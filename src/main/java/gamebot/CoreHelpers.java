@@ -14,6 +14,8 @@ import discord4j.core.object.entity.Message;
 import discord4j.core.object.entity.Role;
 import discord4j.core.object.entity.channel.PrivateChannel;
 import discord4j.core.object.entity.channel.TextChannel;
+import discord4j.core.spec.MessageCreateSpec;
+import discord4j.core.spec.RoleCreateSpec;
 import discord4j.rest.util.Permission;
 import discord4j.rest.util.PermissionSet;
 
@@ -36,9 +38,7 @@ public class CoreHelpers {
 
 	protected void init(ReadyEvent event) {
 		cli = event.getClient();
-		cli.edit(spec -> {
-			spec.setUsername("Game Bot");
-		}).block();
+		cli.edit().withUsername("Game Bot").block();
 	}
 
 	protected String getEveryoneMention() {
@@ -82,10 +82,6 @@ public class CoreHelpers {
 		return getGuild().getRoles().filter(p -> p.getId().asLong() == id).next().block();
 	}
 
-	protected Role getRoleByName(String name) {
-		return getGuild().getRoles().filter(p -> p.getName().equals(name)).next().block();
-	}
-
 	protected Member getUserById(long id) {
 		return getGuild().getMembers().filter(p -> p.getId().asLong() == id).next().block();
 	}
@@ -100,8 +96,7 @@ public class CoreHelpers {
 	}
 
 	protected void editMessage(long channelId, String messageId, String newMessage) {
-		getChannel(channelId).getMessageById(Snowflake.of(messageId)).block().edit(spec -> spec.setContent(newMessage))
-				.block();
+		getChannel(channelId).getMessageById(Snowflake.of(messageId)).block().edit().withContentOrNull(newMessage).block();
 		ChannelLogger.logMessage("Editing message ID " + messageId + " with String of length " + newMessage.length());
 	}
 
@@ -119,9 +114,11 @@ public class CoreHelpers {
 		String filePath = System.getProperty("user.home") + ps + "Pictures" + ps + imageName;
 		ChannelLogger.logMessage("Looking for " + filePath);
 		try (FileInputStream fs = new FileInputStream(filePath)) {
-			String messageId = getChannel(channelId).createMessage(spec -> {
-				spec.addFile(imageName, fs);
-			}).block().getId().asString();
+			String messageId = getChannel(channelId).createMessage(MessageCreateSpec.builder()
+					.addFile(imageName, fs).build())
+					.block()
+					.getId()
+					.asString();
 			fs.close();
 			return messageId;
 		} catch (Exception e) {
@@ -154,11 +151,7 @@ public class CoreHelpers {
 
 	protected Role createRole(String name) {
 		Guild guild = getGuild();
-		return guild.createRole(r -> {
-			r.setColor(Utils.randomColor());
-			r.setName(name);
-			r.setPermissions(readSend);
-		}).block();
+		return guild.createRole(RoleCreateSpec.create().withColor(Utils.randomColor()).withName(name).withPermissions(readSend)).block();
 	}
 
 	protected void deleteRole(long id) {
@@ -166,8 +159,8 @@ public class CoreHelpers {
 		r.delete("Bot request to remove").block();
 	}
 
-	protected boolean hasRole(Member member, String roleName) {
-		Snowflake id = getRoleByName(roleName).getId();
+	protected boolean hasRole(Member member, long roleId) {
+		Snowflake id = getRoleById(roleId).getId();
 		return member.getRoleIds().contains(id);
 	}
 

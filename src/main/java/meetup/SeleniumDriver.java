@@ -30,10 +30,10 @@ public class SeleniumDriver {
 	private final String meetupUrl = "https://www.meetup.com/Edinburgh-Local-Video-Gamers/events/";
 	private FluentWait<WebDriver> wait;
 
-	private final String baseXPath = "//div[contains(@class,'eventList')]//a[contains(@class,'eventCard--link')]";
+	private final String baseXPath = "//div[starts-with(@id, 'e-')]/a";
 	private final String eventName = "//main//h1";
 	private final String eventDate = "//div[contains(@class,'pl-4')]/time";
-	private final String attendeeText = "//a[text()='See all']/../h2";
+	private final String attendeeText = "//div[@id='attendees']/div/h2";
 
 	private static SeleniumDriver instance;
 
@@ -81,11 +81,12 @@ public class SeleniumDriver {
 			Element("//a[contains(@id, 'login-link')]").click();
 			Element("//input[contains(@type, 'email')]").sendKeys(creds.get(0));
 			Element("//input[contains(@type, 'password')]").sendKeys(creds.get(1));
-			Element("//button[contains(@type, 'submit')]").click();
+			ClickElement("//button[contains(text(), 'Log in')]");
+			ClickElement("//button[@id='onetrust-accept-btn-handler']");
 			unlock();
 			return true;
 		} catch (Exception e) {
-			log.error("Unable to login due to " + e.getStackTrace()[0].toString());
+			ChannelLogger.logHighPriorityMessage("Unable to login to Meetup.", e);
 			unlock();
 			return false;
 		}
@@ -100,7 +101,7 @@ public class SeleniumDriver {
 			Thread.sleep(3000);
 			Element("//textarea[contains(@class, 'composeBox-textArea')]").click();
 			Element("//textarea[contains(@class, 'composeBox-textArea')]").sendKeys(code);
-			Element("//button[contains(@class, 'composeBox-sendButton')]").click();
+			ClickElement("//button[contains(@class, 'composeBox-sendButton')]");
 		} catch (Exception e) {
 			return 0;
 		} finally {
@@ -110,16 +111,16 @@ public class SeleniumDriver {
 	}
 
 	public ArrayList<Pair<String, String>> collateAttendees(String eventId) {
+		String attendeeList = "//main//div[@class='mt-6 ']/div/div[@class='flex']";
 		lock();
 		try {
 			ArrayList<Pair<String, String>> attendeePair = new ArrayList<>();
 			webDriver.get(meetupUrl + eventId + "/attendees/");
-			ArrayList<WebElement> attendees = Elements("//ul[contains(@class, 'list')]/li");
-			for (int i = 1; i <= attendees.size(); i++) {
-				String name = TextOf("(//ul[contains(@class, 'list')]/li)[" + i + "]//h4").split("\\s")[0];
-				String link = extractIdFromMeetupUrl(
-						getEventUrl(Element(("(//ul[contains(@class, 'list')]/li)[" + i + "]//a"))));
-				log.info("Found " + i + ": " + name + ", " + link);
+			int attendees = Elements(attendeeList).size();
+			for (int i = 1; i <= attendees; i++) {
+				String name = TextOf(attendeeList + "[" + i + "]//preceding-sibling::span");
+				String link = extractIdFromMeetupUrl(getAttendeeId(attendeeList + "[" + i + "]//button"));
+				log.info("Extracted: " + name + ", " + link);
 				attendeePair.add(new Pair<>(name, link));
 			}
 			return attendeePair;
@@ -134,9 +135,9 @@ public class SeleniumDriver {
 	public ArrayList<MeetupEvent> returnEventData() {
 		lock();
 		ArrayList<MeetupEvent> eventData = new ArrayList<>();
-		try {		
+		try {
 			webDriver.get(meetupUrl);
-			if(!doesElementExist(baseXPath, "Checking to see if there are any events"))
+			if (!doesElementExist(baseXPath, "Checking to see if there are any events"))
 				return eventData;
 			ArrayList<WebElement> cards = Elements(baseXPath);
 			ArrayList<String> urls = new ArrayList<>();
@@ -146,7 +147,7 @@ public class SeleniumDriver {
 			}
 			for (String url : urls) {
 				log.info("Resolving URL " + url);
-				ChannelLogger.logMessage("Resolving URL " + url.replace("https://www", ""));
+				ChannelLogger.logMessage("Resolving URL " + url.replace("https://www.", ""));
 				webDriver.get(url);
 				eventData.add(compileEvent(url));
 				webDriver.get(meetupUrl);
@@ -154,7 +155,7 @@ public class SeleniumDriver {
 			}
 			return eventData;
 		} catch (Exception e) {
-			ChannelLogger.logHighPriorityMessage("Failed to compile full event data.",e);
+			ChannelLogger.logHighPriorityMessage("Failed to compile full event data.", e);
 			return eventData;
 		} finally {
 			unlock();
@@ -165,14 +166,14 @@ public class SeleniumDriver {
 		MeetupEvent event = new MeetupEvent();
 		try {
 			String eventId = extractIdFromMeetupUrl(eventUrl);
-			event.addId(eventId).addUrl(eventUrl).addName(TextOf(eventName))
-					.addDate(TextOf(eventDate)).addCurrentAttendees(TextOf(attendeeText));
+			event.addId(eventId).addUrl(eventUrl).addName(TextOf(eventName)).addDate(TextOf(eventDate))
+					.addCurrentAttendees(TextOf(attendeeText));
 		} catch (Exception e) {
-			ChannelLogger.logHighPriorityMessage("Failed to compile full event data.",e);
+			ChannelLogger.logHighPriorityMessage("Failed to compile event.", e);
 		}
 		return event;
 	}
-	
+
 	private boolean doesElementExist(String xpath, String reason) {
 		try {
 			wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath(xpath)));
@@ -180,6 +181,28 @@ public class SeleniumDriver {
 		} catch (Exception e) {
 			ChannelLogger.logMessage(reason + ": Could not find element");
 			return false;
+		}
+	}
+
+	private String getAttendeeId(String link) {
+		// Open new tab and enable full list
+		ClickElement("//div[@data-testid='attendees-tab-container']/button[2]");
+		ClickElement("//div[@data-testid='attendees-tab-container']/button[1]");		
+		try {
+			ClickElement(link);
+			// Wait for page to load
+			Thread.sleep(200);
+
+			// Get tabs and switch between them
+			ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());
+			webDriver.switchTo().window(tabs.get(1));
+			String id = extractIdFromMeetupUrl(webDriver.getCurrentUrl());
+			webDriver.close();
+			webDriver.switchTo().window(tabs.get(0));
+			Thread.sleep(100);
+			return id;
+		} catch (Exception e) {
+			return "Attendee";
 		}
 	}
 
@@ -201,6 +224,19 @@ public class SeleniumDriver {
 
 	private WebElement Element(String xpath) {
 		return wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath(xpath)));
+	}
+
+	private void ClickElement(String xpath) {
+		int attempts = 0;
+		while (attempts < 2) {
+			try {
+				wait.until(ExpectedConditions.elementToBeClickable(By.xpath(xpath))).click();
+				break;
+			} catch (StaleElementReferenceException e) {
+				// Do it again
+			}
+			attempts++;
+		}
 	}
 
 }

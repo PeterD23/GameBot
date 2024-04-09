@@ -30,6 +30,7 @@ import discord4j.core.object.entity.channel.PrivateChannel;
 import discord4j.core.object.entity.channel.TextChannel;
 import discord4j.core.object.reaction.ReactionEmoji;
 import discord4j.core.object.reaction.ReactionEmoji.Custom;
+import discord4j.core.spec.TextChannelCreateSpec;
 import discord4j.rest.util.PermissionSet;
 import gamebot.CoreHelpers;
 import gamebot.Utils;
@@ -63,12 +64,12 @@ public class RoleChannelManagementListener extends CoreHelpers implements IListe
 			checkIfDisablingTestMode(event);
 			return;
 		}
-		
+
 		Message message = event.getMessage();
 		Channel chn = message.getChannel().block();
-		if(chn instanceof PrivateChannel)
+		if (chn instanceof PrivateChannel)
 			return; // discard pm
-			
+
 		String msg = message.getContent();
 		Member usr = message.getAuthorAsMember().block();
 
@@ -109,7 +110,7 @@ public class RoleChannelManagementListener extends CoreHelpers implements IListe
 	private void initialiseCommands() {
 		commands.put("!clear", msg -> clearChannel());
 		commands.put("!sync", msg -> {
-			readDataIntoMap(genreRoles, "genres");		
+			readDataIntoMap(genreRoles, "genres");
 			setupReactsOnGenres();
 			MeetupLinker.readVerified();
 			MeetupEventManager.init();
@@ -127,7 +128,7 @@ public class RoleChannelManagementListener extends CoreHelpers implements IListe
 		});
 		commands.put("!add-genre", msg -> addGenre(msg));
 	}
-	
+
 	private String trimCommand(String string) {
 		String[] data = string.split("\\s");
 		String[] trimmed = Arrays.copyOfRange(data, 1, data.length);
@@ -146,7 +147,7 @@ public class RoleChannelManagementListener extends CoreHelpers implements IListe
 			log.warn("Failed to read file");
 		}
 	}
-	
+
 	private void saveDataIntoMap(HashMap<String, Long> map, String fileName) {
 		ArrayList<String> lines = new ArrayList<>();
 		for (Map.Entry<String, Long> entry : map.entrySet()) {
@@ -164,7 +165,7 @@ public class RoleChannelManagementListener extends CoreHelpers implements IListe
 		Message msg = chn.getMessageById(Snowflake.of(731852074706403398L)).block();
 		Iterator<?> it = genreRoles.entrySet().iterator();
 		while (it.hasNext()) {
-			Map.Entry<?,?> pair = (Map.Entry<?,?>) it.next();
+			Map.Entry<?, ?> pair = (Map.Entry<?, ?>) it.next();
 			msg.addReaction(ReactionEmoji.custom(getEmojiByName((String) pair.getKey()))).block();
 		}
 	}
@@ -207,10 +208,10 @@ public class RoleChannelManagementListener extends CoreHelpers implements IListe
 		String[] data = msg.split("\\s");
 		if (data.length < 2)
 			return;
-		
-		String emoji = data[data.length-1]; 		
+
+		String emoji = data[data.length - 1];
 		String genreName = msg.replace(emoji, "").trim();
-		
+
 		Guild guild = getGuild();
 		Role everyone = guild.getEveryoneRole().block();
 		Role gameRole = createRole(genreName);
@@ -221,13 +222,8 @@ public class RoleChannelManagementListener extends CoreHelpers implements IListe
 		permissions.add(PermissionOverwrite.forRole(gameRole.getId(), readSend, PermissionSet.none()));
 		permissions.add(PermissionOverwrite.forRole(everyone.getId(), PermissionSet.none(), readSend));
 
-		guild.createTextChannel(chn -> {
-			chn.setParentId(Snowflake.of(GENRES_CATEGORY));
-			chn.setName(channelName);
-			chn.setTopic(genreName);
-			chn.setPosition(2);
-			chn.setPermissionOverwrites(permissions);
-		}).block();
+		guild.createTextChannel(TextChannelCreateSpec.builder().parentId(Snowflake.of(GENRES_CATEGORY))
+				.name(channelName).topic(genreName).position(new Integer(2)).permissionOverwrites(permissions).build()).block();
 
 		// Get Role
 		long roleId = genreRoles.get(channelName).longValue();
@@ -236,10 +232,11 @@ public class RoleChannelManagementListener extends CoreHelpers implements IListe
 		genreRoles.put(emoji, new Long(roleId));
 
 		// React to Game List
-		Message genreMessage = getChannel(ADD_GENRES_HERE).getMessageById(Snowflake.of(731852074706403398L)).block(); // Directly reference the ID instead of doing .getLastMessage() which is failing
+		// Directly reference the ID instead of doing .getLastMessage() which isfailing
+		Message genreMessage = getChannel(ADD_GENRES_HERE).getMessageById(Snowflake.of(731852074706403398L)).block(); 
 		GuildEmoji genreEmoji = getGuild().getEmojis().filter(p -> p.getName().equals(emoji)).next().block();
 		genreMessage.addReaction(ReactionEmoji.custom(genreEmoji)).block();
-		
+
 		sendMessage(CONSOLE, genreName + " successfully created! :)");
 		saveDataIntoMap(genreRoles, "genres");
 	}

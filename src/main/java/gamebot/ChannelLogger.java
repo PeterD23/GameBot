@@ -16,6 +16,7 @@ public class ChannelLogger {
 	private static TextChannel logChannel;
 	public static long LOG = 902582146437349456L;
 	private static Logger log = Loggers.getLogger("logger");
+	private static int maxStackLength = 8;
 
 	public static void init(Guild guild) {
 		logChannel = (TextChannel) guild.getChannelById(Snowflake.of(LOG)).block();
@@ -52,11 +53,11 @@ public class ChannelLogger {
 		sb.append("Message: ").append(throwable.getMessage()).append("\n");
 
 		StackTraceElement[] stackTrace = throwable.getStackTrace();
-		if (stackTrace.length > 0) {
-			StackTraceElement element = stackTrace[0];
-			sb.append("File: ").append(element.getFileName()).append("\n");
-			sb.append("Line: ").append(element.getLineNumber()).append("\n");
-			sb.append("Method: ").append(element.getMethodName()).append("\n");
+		int stackLength = Math.min(maxStackLength, stackTrace.length);
+		for(int i = 0; i < stackLength; i++) {
+			StackTraceElement element = stackTrace[i];
+			String info = element.getFileName() != null ? (element.getFileName() + "." + element.getMethodName() + ":" + element.getLineNumber()) : element.getMethodName();
+			sb.append("Stack ["+i+"]:").append(info).append("\n");
 		}
 		return sb.toString();
 	}
