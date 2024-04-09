@@ -5,17 +5,18 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Optional;
 import java.util.Random;
 
-import org.apache.commons.lang.RandomStringUtils;
-import org.apache.http.HttpEntity;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.ContentType;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.util.EntityUtils;
+import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.core5.http.HttpEntity;
+import org.apache.hc.core5.http.HttpHeaders;
+import org.apache.hc.core5.http.io.entity.EntityUtils;
+import org.apache.hc.core5.http.io.entity.StringEntity;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -34,6 +35,7 @@ import discord4j.core.object.entity.User;
 import discord4j.core.object.entity.channel.MessageChannel;
 import discord4j.core.object.entity.channel.PrivateChannel;
 import discord4j.core.object.reaction.ReactionEmoji;
+import discord4j.discordjson.possible.Possible;
 import gamebot.ChannelLogger;
 import gamebot.CoreHelpers;
 import gamebot.Status;
@@ -49,11 +51,16 @@ import reactor.util.Loggers;
 
 public class UserListener extends CoreHelpers implements IListener {
 
-	private static Logger log = Loggers.getLogger("logger");
+	private static Logger log = Loggers.getLogger("logger");	
+	private HashMap<String, UserCommand> commands = new HashMap<>();
+	
+	// Roles
 	private long INTRODUCTIONS = 732247266173124648L;
 	private long MEETUP_VERIFIED = 902260032945651774L;
-	private HashMap<String, UserCommand> commands = new HashMap<>();
-
+	private long VERIFIED = 732253932482723881L;
+	private long POLL_WATCHER = 908032897762619433L;
+	private long EVENT_WATCHER = 908033236997902336L;
+	
 	private LocalDateTime restrictedPoll = LocalDateTime.now();
 
 	public void onReady(ReadyEvent event) {
@@ -76,7 +83,6 @@ public class UserListener extends CoreHelpers implements IListener {
 			return;
 		}
 
-		log.info("MessageCreateEvent fired for Moderation Listener");
 		Member usr = event.getMember().get();
 		if (usr.isBot())
 			return;
@@ -96,7 +102,6 @@ public class UserListener extends CoreHelpers implements IListener {
 		Message message = event.getMessage().block();
 		long channelId = message.getChannel().block().getId().asLong();
 
-		log.info("MessageCreateEvent fired for Moderation Listener");
 		Member usr = message.getAuthorAsMember().block();
 		if (usr.isBot())
 			return;
@@ -125,9 +130,7 @@ public class UserListener extends CoreHelpers implements IListener {
 			}
 			online.addAttendee(usr.getMention());
 			Message message = getMessage(EVENTS, online.getMessageId());
-			message.edit(spec -> {
-				spec.setContent(online.toString());
-			}).block();
+			message.edit().withContent(Possible.of(Optional.of(online.toString()))).block();
 			EventManager.saveEventData();
 		}
 	}
@@ -151,9 +154,7 @@ public class UserListener extends CoreHelpers implements IListener {
 			}
 			online.removeAttendee(usr.getMention());
 			Message message = getMessage(EVENTS, online.getMessageId());
-			message.edit(spec -> {
-				spec.setContent(online.toString());
-			}).block();
+			message.edit().withContent(Possible.of(Optional.of(online.toString()))).block();
 			EventManager.saveEventData();
 		}
 	}
@@ -185,26 +186,32 @@ public class UserListener extends CoreHelpers implements IListener {
 		commands.put("!help", (evt, msg) -> help(evt, msg));
 		commands.put("!status", (evt, msg) -> status(evt));
 		commands.put("!embed", (evt, msg) -> embed(evt, msg));
-		commands.put("!watch-poll", (evt, msg) -> watch(evt, "Poll"));
-		commands.put("!watch-event", (evt, msg) -> watch(evt, "Event"));
+		commands.put("!watch-poll", (evt, msg) -> watch(evt, POLL_WATCHER));
+		commands.put("!watch-event", (evt, msg) -> watch(evt, EVENT_WATCHER));
 		commands.put("!hltb", (evt, msg) -> howLongToBeat(evt, msg));
 		commands.put("!reset", (evt, msg) -> resetPoll(evt));
 	}
 
 	private void howLongToBeat(MessageCreateEvent event, String game) {
 		JsonNode output = null;
-		try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
+		ObjectMapper mapper = Utils.buildObjectMapper();
+
+		String JSON_STRING = "{ \"game\":\"" + game.replace("!hltb", "").trim() + "\" }";
+		try (CloseableHttpClient httpClient = HttpClients.createDefault();
+				HttpEntity body = new StringEntity(JSON_STRING, ContentType.APPLICATION_JSON)) {
 			HttpPost post = new HttpPost("http://localhost:2460/game");
-			String JSON_STRING = "{ \"game\":\"" + game.replace("!hltb", "").trim() + "\" }";
-			HttpEntity stringEntity = new StringEntity(JSON_STRING, ContentType.APPLICATION_JSON);
-			post.setEntity(stringEntity);
-			try (CloseableHttpResponse response = httpClient.execute(post)) {
-				HttpEntity responseEntity = response.getEntity();
-				if (response.getStatusLine().getStatusCode() == 200) {
-					String json = EntityUtils.toString(responseEntity, StandardCharsets.UTF_8);
-					ObjectMapper mapper = Utils.buildObjectMapper();
-					output = mapper.readTree(json);
+			post.setHeader(HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_JSON.getMimeType());
+			post.setEntity(body);
+
+			try (HttpEntity responseEntity = httpClient.execute(post, response -> {
+				if (response.getCode() == 200) {
+					return response.getEntity();
 				}
+				return null;
+			})) {
+				String json = EntityUtils.toString(responseEntity, StandardCharsets.UTF_8);
+				output = mapper.readTree(json);
+				body.close();
 			}
 		} catch (Exception e) {
 			ChannelLogger.logMessage("HTTP Post failed with Error: " + e.getStackTrace()[0]);
@@ -240,22 +247,22 @@ public class UserListener extends CoreHelpers implements IListener {
 		Utils.downloadJPG("https://howlongtobeat.com/games/" + output.findValue("imageUrl").asText(), image, 100);
 		sendMessage(channelId, "**" + name + "**");
 		embedImage(channelId, image + ".jpg");
-		sendMessage(channelId, Utils.constructMultiLineString(1, developer, timeToBeatMain, timeToBeatExtra, timeToBeatCompletion, hltbAudienceScore,
-				openCriticScore));
+		sendMessage(channelId, Utils.constructMultiLineString(1, developer, timeToBeatMain, timeToBeatExtra,
+				timeToBeatCompletion, hltbAudienceScore, openCriticScore));
 	}
 
-	private void watch(MessageCreateEvent event, String type) {
+	private void watch(MessageCreateEvent event, long roleId) {
+		String eventOrPoll = (roleId == EVENT_WATCHER ? "Event":"Poll");
 		long chn = event.getMessage().getChannelId().asLong();
-		String role = type + " Watcher";
 		Member usr = event.getMember().get();
-		if (!hasRole(usr, role)) {
-			usr.addRole(getRoleByName(role).getId(), "Requested by user").block();
-			sendMessage(chn, "Hey " + usr.getMention() + " you will now be pinged whenever a new " + type.toLowerCase()
+		if (!hasRole(usr, roleId)) {
+			usr.addRole(getRoleById(roleId).getId(), "Requested by user").block();
+			sendMessage(chn, "Hey " + usr.getMention() + " you will now be pinged whenever a new " + eventOrPoll
 					+ " is created!");
 		} else {
-			usr.removeRole(getRoleByName(role).getId(), "Requested by user").block();
+			usr.removeRole(getRoleById(roleId).getId(), "Requested by user").block();
 			sendMessage(chn, "Hey " + usr.getMention() + " you will no longer be pinged whenever a new "
-					+ type.toLowerCase() + " is created!");
+					+ eventOrPoll + " is created!");
 		}
 	}
 
@@ -275,7 +282,7 @@ public class UserListener extends CoreHelpers implements IListener {
 			return;
 		}
 		Poll poll = new Poll(message);
-		String id = sendMessage(chn, getRoleByName("Poll Watcher").getMention() + "\n\n" + poll.printPoll());
+		String id = sendMessage(chn, getRoleById(POLL_WATCHER).getMention() + "\n\n" + poll.printPoll());
 		Message pollMsg = getMessage(chn, Long.parseLong(id));
 		pollMsg.pin().block();
 		poll.react(pollMsg);
@@ -299,7 +306,7 @@ public class UserListener extends CoreHelpers implements IListener {
 			return;
 		}
 		String messageId = sendMessage(EVENTS,
-				getRoleByName("Event Watcher").getMention() + "\n\n" + onlineEvent.toString());
+				getRoleById(EVENT_WATCHER).getMention() + "\n\n" + onlineEvent.toString());
 		onlineEvent.addMessageId(Long.parseLong(messageId));
 		Message eventMsg = getMessage(chn, Long.parseLong(messageId));
 		eventMsg.pin().block();
@@ -385,13 +392,13 @@ public class UserListener extends CoreHelpers implements IListener {
 	}
 
 	private void verify(Member member, long channelId, String message) {
-		if (hasRole(member, "Verified")) {
+		if (hasRole(member, VERIFIED)) {
 			sendMessage(channelId, "Hello " + member.getMention() + ", you are already verified :heart:");
 			return;
 		}
 		int count = message.split("\\s").length;
 		if (count >= 30) {
-			member.addRole(getRoleByName("Verified").getId()).block();
+			member.addRole(getRoleById(VERIFIED).getId()).block();
 			sendMessage(channelId, member.getMention()
 					+ " Cool! I've verified you. You now have access to the rest of the server! Use the add-genres-here channel to subscribe to the game genres you're interested in!");
 		} else {
@@ -401,7 +408,7 @@ public class UserListener extends CoreHelpers implements IListener {
 	}
 
 	private void introduceYourself(Member member, long channelId) {
-		if (hasRole(member, "Verified")) {
+		if (hasRole(member, VERIFIED)) {
 			sendMessage(channelId, "Hello " + member.getMention() + "! " + Utils.getARandomGreeting());
 		} else {
 			sendMessage(channelId, "Hello " + member.getMention()

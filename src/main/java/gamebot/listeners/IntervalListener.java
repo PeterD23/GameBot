@@ -59,7 +59,6 @@ public class IntervalListener extends CoreHelpers implements IListener {
 		Channel chn = message.getChannel().block();
 		if (chn instanceof PrivateChannel)
 			return; // discard this
-		log.info("MessageCreateEvent fired for Interval Listener");	
 		String msg = message.getContent();
 		Member usr = message.getAuthorAsMember().block();
 
