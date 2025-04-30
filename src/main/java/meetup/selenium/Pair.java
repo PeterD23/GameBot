@@ -1,4 +1,4 @@
-package meetup;
+package meetup.selenium;
 
 public class Pair<T1, T2> {
 
