@@ -2,6 +2,7 @@ package gamebot.listeners;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -41,8 +42,9 @@ import gamebot.CoreHelpers;
 import gamebot.Status;
 import gamebot.UserCommand;
 import gamebot.Utils;
-import meetup.MeetupLinker;
-import meetup.SeleniumDriver;
+import meetup.selenium.MeetupLinker;
+import meetup.selenium.SeleniumDriver;
+import misc.Birthday;
 import onlineevent.EventManager;
 import onlineevent.OnlineEvent;
 import onlineevent.Poll;
@@ -190,6 +192,18 @@ public class UserListener extends CoreHelpers implements IListener {
 		commands.put("!watch-event", (evt, msg) -> watch(evt, EVENT_WATCHER));
 		commands.put("!hltb", (evt, msg) -> howLongToBeat(evt, msg));
 		commands.put("!reset", (evt, msg) -> resetPoll(evt));
+		commands.put("!birthday", (evt, msg) -> birthday(evt));
+	}
+	
+	private void birthday(MessageCreateEvent event) {
+		LocalDate today = LocalDate.now();
+		Member member = event.getMember().get();
+		
+		long user = member.getId().asLong();
+		Birthday.add(user, today);
+		
+		long chn = event.getMessage().getChannelId().asLong();
+		sendMessage(chn, "Happy Birthday "+ member.getMention()+"! I will remember this.");
 	}
 
 	private void howLongToBeat(MessageCreateEvent event, String game) {

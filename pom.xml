@@ -62,6 +62,19 @@
 			<artifactId>imgscalr-lib</artifactId>
 			<version>4.2</version>
 		</dependency>
+		
+		<dependency>
+ 			<groupId>io.fusionauth</groupId>
+			<artifactId>fusionauth-jwt</artifactId>
+ 			<version>5.3.2</version>
+		</dependency>
+		
+		<dependency>
+    		<groupId>org.apache.httpcomponents</groupId>
+    		<artifactId>httpclient</artifactId>
+    		<version>4.5.14</version>
+		</dependency>
+		
 
 	</dependencies>
 

@@ -26,6 +26,7 @@ public class CoreHelpers {
 	protected long BOT_ID = 731598251437981717L;
 	protected long LOG = 902582146437349456L;
 
+	protected long GENERAL = 731597823640076322L;
 	protected long MUSIC = 797063557341773834L;
 	protected long EVENTS = 907696207508406342L;
 

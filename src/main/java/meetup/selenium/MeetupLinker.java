@@ -1,4 +1,4 @@
-package meetup;
+package meetup.selenium;
 
 import java.io.File;
 import java.io.IOException;

@@ -34,8 +34,8 @@ import discord4j.core.spec.TextChannelCreateSpec;
 import discord4j.rest.util.PermissionSet;
 import gamebot.CoreHelpers;
 import gamebot.Utils;
-import meetup.MeetupEventManager;
-import meetup.MeetupLinker;
+import meetup.selenium.MeetupEventManager;
+import meetup.selenium.MeetupLinker;
 import reactor.util.Logger;
 import reactor.util.Loggers;
 

@@ -1,4 +1,4 @@
-package meetup;
+package meetup.selenium;
 
 import java.io.File;
 import java.io.IOException;
@@ -62,6 +62,10 @@ public class MeetupEventManager {
 		} catch (IOException e) {
 			ChannelLogger.logMessage("Failed to save events to file ./events");
 		}
+	}
+	
+	public static String hasEvent(String eventId) {
+		return events.stream().filter(o -> o.first().equals(eventId)).map(o -> o.second()).findFirst().orElse(""); 
 	}
 
 	public static String hasEvent(MeetupEvent event) {

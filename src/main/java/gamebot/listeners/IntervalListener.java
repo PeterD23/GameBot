@@ -2,6 +2,7 @@ package gamebot.listeners;
 
 import java.time.DayOfWeek;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -20,11 +21,16 @@ import gamebot.Command;
 import gamebot.CoreHelpers;
 import gamebot.SpotifyHelpers;
 import gamebot.Utils;
-import meetup.MeetupEvent;
-import meetup.MeetupEventManager;
-import meetup.MeetupLinker;
-import meetup.Pair;
-import meetup.SeleniumDriver;
+import meetup.api.JwtDTO;
+import meetup.api.MeetupApiQuerier;
+import meetup.api.MeetupApiResponse;
+import meetup.api.RsvpUser;
+import meetup.selenium.MeetupEvent;
+import meetup.selenium.MeetupEventManager;
+import meetup.selenium.MeetupLinker;
+import meetup.selenium.Pair;
+import meetup.selenium.SeleniumDriver;
+import misc.Birthday;
 import onlineevent.EventManager;
 import onlineevent.OnlineEvent;
 import reactor.util.Logger;
@@ -88,7 +94,7 @@ public class IntervalListener extends CoreHelpers implements IListener {
 	private void initialiseCommands() {
 		commands.put("!set-playlist", msg -> setPlaylist(msg));
 		commands.put("!recommend", msg -> recommendSong());
-		commands.put("!fetch-events", msg -> fetchEventData());
+		commands.put("!fetch-events", msg -> fetchEventDataFromApi());
 		commands.put("!panic", msg -> panic());
 		commands.put("!unlock", msg -> unlockDriver());
 		commands.put("!set-fetch-freq", msg -> setFetchFrequency(msg));
@@ -113,6 +119,38 @@ public class IntervalListener extends CoreHelpers implements IListener {
 		sendMessage(CONSOLE, "Panic mode is now " + panic);
 	}
 
+	private void fetchEventDataFromApi() {
+		log.info("Fetching events from Meetup");
+		ChannelLogger.logMessage("Fetching events from Meetup API, time is "+LocalTime.now().toString());
+		MeetupApiQuerier meetupApi = new MeetupApiQuerier();
+		JwtDTO token = meetupApi.generateApiToken();
+		
+		if(driver.isLocked()) {
+			log.info("Driver is currently busy, will try again in 15");
+			ChannelLogger.logMessage("Driver attempted to fetch events but is currently busy");
+			return;
+		}
+		ArrayList<String> eventIds = driver.getEventIds();
+		ChannelLogger.logMessage("Found "+eventIds.size()+" events from Meetup");
+		for(String eventId : eventIds) {
+			MeetupApiResponse event = meetupApi.getEventDetails(token, eventId);
+			String message = getEveryoneMention() + prependData + event.toString() + mapAttendees(event.getUsers());
+			String possibleId = MeetupEventManager.hasEvent(eventId);
+			if (possibleId != "") {
+				editMessage(MEETUP, possibleId, message);
+			} else {
+				sendMessageIfValid(eventId, event, message);
+			}
+		}	
+	}
+	
+	private void sendMessageIfValid(String eventId, MeetupApiResponse event, String message) {
+		String messageId = sendMessage(MEETUP, message);
+		getChannel(MEETUP).getMessageById(Snowflake.of(messageId)).block().pin().block();
+		MeetupEventManager.addEvent(eventId, messageId, event.getDateTime());
+		ChannelLogger.logMessage("Added new pinned event to Event List");
+	}
+	
 	private void fetchEventData() {
 		log.info("Fetching events from Meetup");
 		ChannelLogger.logMessage("Fetching events from Meetup, time is "+LocalTime.now().toString());
@@ -127,7 +165,7 @@ public class IntervalListener extends CoreHelpers implements IListener {
 		for(MeetupEvent event : events) {
 			if(event.toString().equals("err"))
 				continue;
-			String message = getEveryoneMention() + prependData + event.toString() + convertAttendees(event.getID());
+			String message = getEveryoneMention() + prependData + event.toString();
 			String possibleId = MeetupEventManager.hasEvent(event);
 			if (possibleId != "") {
 				editMessage(MEETUP, possibleId, message);
@@ -148,14 +186,12 @@ public class IntervalListener extends CoreHelpers implements IListener {
 		ChannelLogger.logMessage("Added new pinned event to Event List");
 	}
 	
-	
-	private String convertAttendees(String eventId) {
+	private String mapAttendees(ArrayList<RsvpUser> attendees) {
 		String list = "\n\n";
-		ArrayList<Pair<String, String>> attendees = driver.collateAttendees(eventId);
-		ChannelLogger.logMessage("Found "+attendees.size()+" attendees for event "+eventId+" to append");
-		for(Pair<String, String> attendee : attendees) {
-			long userId = MeetupLinker.getUserByMeetupId(Long.parseLong(attendee.second()));		
-			list += attendee.first() + (userId != 0L ? ": "+getUserIfMentionable(userId) : "") +"\n";
+		ChannelLogger.logMessage("Found "+attendees.size()+" attendees for event to append");
+		for(RsvpUser attendee : attendees) {
+			long userId = MeetupLinker.getUserByMeetupId(Long.parseLong(attendee.getId()));		
+			list += attendee.getName().split(" ")[0] + (userId != 0L ? ": "+getUserIfMentionable(userId) : "") +"\n";
 		}
 		return list;
 	}
@@ -174,8 +210,10 @@ public class IntervalListener extends CoreHelpers implements IListener {
 		LocalTime time = LocalTime.now();
 		if (time.getHour() == 12 && time.getMinute() == 0) {
 			recommendSong();
+			birthdayCheck();
 		} else if (time.getMinute() % fetchFrequency == 0) {
-			fetchEventData();
+			//fetchEventData();
+			fetchEventDataFromApi();
 			ArrayList<String> pastEvents = MeetupEventManager.scheduleMessagesForDeletion();
 			for(String s : pastEvents) {
 				log.info("Deleting message ID "+s);
@@ -209,6 +247,21 @@ public class IntervalListener extends CoreHelpers implements IListener {
 							"You have an event upcoming in less than 30 minutes, check the online events channel for more details!");
 				}
 			}
+		}
+	}
+	
+	private void birthdayCheck() {
+		LocalDate today = LocalDate.now();
+		log.info("Scheduled check for birthdays");
+		ArrayList<Long> birthdays = Birthday.hasBirthdaysToday(); 
+		for(Long user : birthdays) {
+			sendMessage(GENERAL,"Happy birthday "+getUserIfMentionable(user.longValue()));
+		}
+		if(today.getMonthValue() == 5 && today.getDayOfMonth() == 23) {
+			sendMessage(GENERAL,"Happy Birthday "+getUserById(97036843924598784L).getMention()+"! Please wish him a happy birthday which I totally thought up myself and wasn't hastily added to my programming by him 5 days prior");
+		}
+		if(today.getMonthValue() == 7 && today.getDayOfMonth() == 11) {
+			sendMessage(GENERAL,"It is July 11th, my birthday today! Today marks "+ (today.getYear()-2020) + " years since I first joined the server.");
 		}
 	}
 

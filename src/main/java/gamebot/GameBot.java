@@ -20,7 +20,7 @@ import gamebot.listeners.IListener;
 import gamebot.listeners.IntervalListener;
 import gamebot.listeners.RoleChannelManagementListener;
 import gamebot.listeners.UserListener;
-import meetup.MeetupEventManager;
+import meetup.selenium.MeetupEventManager;
 import onlineevent.EventManager;
 import reactor.core.publisher.Mono;
 

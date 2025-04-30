@@ -1,4 +1,4 @@
-package meetup;
+package meetup.selenium;
 
 import java.io.File;
 import java.nio.charset.Charset;
@@ -91,6 +91,27 @@ public class SeleniumDriver {
 			return false;
 		}
 	}
+	
+	public ArrayList<String> getEventIds(){
+		ArrayList<String> ids = new ArrayList<>();
+		lock();
+		try {
+			webDriver.get(meetupUrl);
+			if (!doesElementExist(baseXPath, "Checking to see if there are any events"))
+				return ids;
+			ArrayList<WebElement> cards = Elements(baseXPath);
+			for (WebElement card : cards) {
+				ChannelLogger.logMessage("Adding card to list...");
+				String url = getEventUrl(card);
+				ids.add(extractIdFromMeetupUrl(url));
+			}
+		} catch (Exception e) {
+			ChannelLogger.logHighPriorityMessage("Failed to compile ids", e);
+		} finally {
+			unlock();
+		}
+		return ids;
+	}
 
 	public long sendCode(String meetupUrl, String code) {
 		lock();
@@ -131,7 +152,7 @@ public class SeleniumDriver {
 			unlock();
 		}
 	}
-
+	
 	public ArrayList<MeetupEvent> returnEventData() {
 		lock();
 		ArrayList<MeetupEvent> eventData = new ArrayList<>();
