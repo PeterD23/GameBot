@@ -21,6 +21,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import gamebot.ChannelLogger;
 
+@SuppressWarnings("resource")
 public class MeetupApiQuerier {
 
 	private ObjectMapper objectMapper;
@@ -52,7 +53,7 @@ public class MeetupApiQuerier {
 			return token;
 		} catch (Exception e) {
 			firstExc = e;
-			ChannelLogger.logMessage("Unable to generate refresh token.");
+			ChannelLogger.logMessageError("Unable to generate refresh token.");
 		}
 		
 		// Try with Private Key
@@ -62,11 +63,11 @@ public class MeetupApiQuerier {
 			return token;
 		} catch (Exception e) {
 			secondExc = e;
-			ChannelLogger.logMessage("Unable to generate JWT Token.");
+			ChannelLogger.logMessageError("Unable to generate JWT Token.");
 		}
 		
 		ChannelLogger.logHighPriorityMessage("Unable to generate token with both methods", firstExc);
-		ChannelLogger.logMessage(secondExc.getMessage());
+		ChannelLogger.logMessageError(secondExc.getMessage());
 		return null;
 	}
 	

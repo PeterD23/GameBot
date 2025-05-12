@@ -27,14 +27,14 @@ public class MeetupEventManager {
 	}
 	
 	public static ArrayList<String> scheduleMessagesForDeletion() {
-		ChannelLogger.logMessage("Scheduling past events for deletion...");
+		ChannelLogger.logMessageInfo("Scheduling past events for deletion...");
 		LocalDateTime time = LocalDateTime.now();
 		ArrayList<String> toRemove = events.stream().filter(o -> {
 			LocalDateTime check = LocalDateTime.parse(o.third()).plusHours(16);
 			return time.compareTo(check) > 0; 
 		}).map(o -> o.second()).collect(Collectors.toCollection(ArrayList::new));
 		events.removeIf(o -> toRemove.contains(o.second()));
-		ChannelLogger.logMessage("Found "+toRemove.size()+ ", Events list now contains "+events.size());
+		ChannelLogger.logMessageInfo("Found "+toRemove.size()+ ", Events list now contains "+events.size());
 		saveEventData();
 		return toRemove;
 	}
@@ -48,7 +48,7 @@ public class MeetupEventManager {
 				events.add(new Tuple<>(data[0], data[1], data[2]));
 			}
 		} catch (IOException e) {
-			ChannelLogger.logMessage("Failed to read file ./events");
+			ChannelLogger.logMessageError("Failed to read file ./events");
 		}
 	}
 	
@@ -60,7 +60,7 @@ public class MeetupEventManager {
 		try {
 			FileUtils.writeLines(new File("events"), lines);
 		} catch (IOException e) {
-			ChannelLogger.logMessage("Failed to save events to file ./events");
+			ChannelLogger.logMessageError("Failed to save events to file ./events");
 		}
 	}
 	
