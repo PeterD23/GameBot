@@ -90,6 +90,9 @@ public class UserListener extends CoreHelpers implements IListener {
 
 	// Slash Commands
 	public void onCommand(ChatInputInteractionEvent event) {
+		if (Utils.isTestingMode() && event.getCommandName() != "test") {
+			return;
+		}
 		if (commands.get(event.getCommandName()) != null) {
 			commands.get(event.getCommandName()).submitCommand(event).block();
 		}

@@ -78,6 +78,9 @@ public class AdminListener extends CoreHelpers implements IListener {
 	}
 
 	public void onCommand(ChatInputInteractionEvent event) {
+		if (Utils.isTestingMode() && event.getCommandName() != "test") {
+			return;
+		}
 		if (commands.get(event.getCommandName()) != null && isAdmin(event.getInteraction().getMember().get())) {
 			commands.get(event.getCommandName()).submitCommand(event).block();
 		}
