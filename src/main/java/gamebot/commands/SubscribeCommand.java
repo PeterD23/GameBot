@@ -70,7 +70,7 @@ public class SubscribeCommand implements ISlashCommand {
 				genreRoles.add(new Tuple<>(data[0], new Long(data[1]), getRoleById(new Long(data[1])).getName()));
 			}
 		} catch (IOException e) {
-			ChannelLogger.logMessageError("Failed to read genres file");
+			ChannelLogger.logMessageError("Failed to read genres file:", e);
 		}
 	}
 	

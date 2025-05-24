@@ -53,7 +53,7 @@ public class MeetupApiQuerier {
 			return token;
 		} catch (Exception e) {
 			firstExc = e;
-			ChannelLogger.logMessageError("Unable to generate refresh token.");
+			ChannelLogger.logMessageError("Unable to generate refresh token.", firstExc);
 		}
 		
 		// Try with Private Key
@@ -63,11 +63,10 @@ public class MeetupApiQuerier {
 			return token;
 		} catch (Exception e) {
 			secondExc = e;
-			ChannelLogger.logMessageError("Unable to generate JWT Token.");
+			ChannelLogger.logMessageError("Unable to generate JWT Token.", secondExc);
 		}
 		
-		ChannelLogger.logHighPriorityMessage("Unable to generate token with both methods", firstExc);
-		ChannelLogger.logMessageError(secondExc.getMessage());
+		ChannelLogger.logHighPriorityMessage("Unable to generate token with both methods", null);
 		return null;
 	}
 	

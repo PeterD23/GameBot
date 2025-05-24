@@ -17,6 +17,7 @@ import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.Message;
 import discord4j.core.object.entity.channel.MessageChannel;
 import discord4j.core.object.reaction.ReactionEmoji;
+import gamebot.ChannelLogger;
 import gamebot.CoreHelpers;
 import gamebot.Utils;
 import gamebot.commands.BasicCommand;
@@ -72,7 +73,9 @@ public class UserListener extends CoreHelpers implements IListener {
 		
 		Message message = event.getMessage().block();
 		Member usr = message.getAuthorAsMember().block();
-		if (usr.isBot())
+		if(usr == null) {
+			return;
+		} else if (usr.isBot())
 			return;
 
 		if (!hasRole(usr, VERIFIED)) {
@@ -85,6 +88,7 @@ public class UserListener extends CoreHelpers implements IListener {
 			return;
 
 		Member usr = event.getMember();
+		ChannelLogger.logMessageInfo("Somebody new joined the server! User ID "+usr.getId().asLong());
 		introduceYourself(usr, INTRODUCTIONS);
 	}
 
@@ -155,10 +159,10 @@ public class UserListener extends CoreHelpers implements IListener {
 
 	private void introduceYourself(Member member, long channelId) {
 		if (hasRole(member, VERIFIED)) {
-			sendMessage(channelId, "Hello " + member.getMention() + "! " + Utils.getARandomGreeting());
+			sendMessage(channelId, "Hello " + member.getMention() + "! " + Utils.getARandomGreeting()).block();
 		} else {
 			sendMessage(channelId, "Hello " + member.getMention()
-					+ "! Welcome to the server! You'll need to get verified before you can post in other channels, so type a short (30 words or more) introduction about yourself, and your meetup name.");
+					+ "! Welcome to the server! You'll need to get verified before you can post in other channels, so type a short (30 words or more) introduction about yourself, and your meetup name.").block();
 		}
 	}
 }

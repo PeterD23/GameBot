@@ -206,15 +206,15 @@ public class AdminListener extends CoreHelpers implements IListener {
 		log.info("Scheduled check for birthdays");
 		ArrayList<Long> birthdays = Birthday.hasBirthdaysToday();
 		for (Long user : birthdays) {
-			sendMessage(GENERAL, "Happy birthday " + getUserIfMentionable(user.longValue()));
+			sendMessage(GENERAL, "Happy birthday " + getUserIfMentionable(user.longValue())).block();
 		}
 		if (today.getMonthValue() == 5 && today.getDayOfMonth() == 23) {
 			sendMessage(GENERAL, "Happy Birthday " + getUserById(97036843924598784L).getMention()
-					+ "! Please wish him a happy birthday which I totally thought up myself and wasn't hastily added to my programming by him 5 days prior");
+					+ "! Please wish him a happy birthday which I totally thought up myself and wasn't hastily added to my programming by him 5 days prior").block();
 		}
 		if (today.getMonthValue() == 7 && today.getDayOfMonth() == 11) {
 			sendMessage(GENERAL, "It is July 11th, my birthday today! Today marks " + (today.getYear() - 2020)
-					+ " years since I first joined the server.");
+					+ " years since I first joined the server.").block();
 		}
 	}
 
@@ -222,12 +222,12 @@ public class AdminListener extends CoreHelpers implements IListener {
 		log.info("Scheduled recommendation for music");
 		ChannelLogger.logMessageInfo("Time is 12 pm, recommending a song from Spotify");
 		if (LocalDateTime.now().getDayOfWeek() == DayOfWeek.FRIDAY) {
-			sendMessage(MUSIC, "https://open.spotify.com/track/79ozNtJ4aqVaAav0bqXpji");
+			sendMessage(MUSIC, "https://open.spotify.com/track/79ozNtJ4aqVaAav0bqXpji").block();
 			return;
 		}
 		String song = SpotifyHelpers.recommendSong(playlist);
 		if (song.length() > 0) {
-			sendMessage(MUSIC, song);
+			sendMessage(MUSIC, song).block();
 		}
 	}
 
@@ -235,7 +235,7 @@ public class AdminListener extends CoreHelpers implements IListener {
 		boolean validDate = !event.getDate().equals("err");
 		if (!validDate) {
 			ChannelLogger.logMessageError(
-					"Unable to parse the date for event " + event.getID() + ", using placeholder date.");
+					"Unable to parse the date for event " + event.getID() + ", using placeholder date.", new RuntimeException());
 		}
 		Message message = sendMessage(MEETUP, content).block();
 		pinMessage(MEETUP, message.getId()).block();

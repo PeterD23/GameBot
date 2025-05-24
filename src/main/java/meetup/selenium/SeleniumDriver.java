@@ -125,7 +125,7 @@ public class SeleniumDriver {
 			String profileUrl = Element("//a[text()='View Profile']").getAttribute("href");
 			meetupId = new Long(extractIdFromMeetupUrl(profileUrl)).longValue();
 		} catch (Exception e) {
-			ChannelLogger.logMessageError("Error occurred during verification due to "+e.getStackTrace()[0]);
+			ChannelLogger.logMessageError("Error occurred during verification due to ",e);
 		} finally {
 			unlock();
 		}
@@ -201,7 +201,7 @@ public class SeleniumDriver {
 			wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath(xpath)));
 			return true;
 		} catch (Exception e) {
-			ChannelLogger.logMessageError(reason + ": Could not find element");
+			ChannelLogger.logMessageError(reason + ": Could not find element", e);
 			return false;
 		}
 	}

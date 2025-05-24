@@ -1,10 +1,12 @@
 package gamebot;
 
-import discord4j.rest.util.Color;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
+import java.time.temporal.ChronoField;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -21,6 +23,8 @@ import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+
+import discord4j.rest.util.Color;
 
 public class Utils {
 
@@ -63,6 +67,13 @@ public class Utils {
 
 	public static boolean adminsDenied() {
 		return denyAdmins;
+	}
+	
+	public static DateTimeFormatter getDateFormatter() {
+		DateTimeFormatterBuilder builder = new DateTimeFormatterBuilder();
+		builder.append(DateTimeFormatter.ISO_OFFSET_DATE);
+		builder.parseDefaulting(ChronoField.HOUR_OF_DAY, 0);
+		return builder.toFormatter();
 	}
 
 	public static ObjectMapper buildObjectMapper() {

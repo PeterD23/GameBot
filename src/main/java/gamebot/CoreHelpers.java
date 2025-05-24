@@ -81,15 +81,15 @@ public class CoreHelpers {
 	protected boolean isAdmin(Member usr) {
 		if (Utils.adminsDenied())
 			return false;
-		return usr.getRoles().any(p -> p.getId().asLong() == ADMIN_ROLE).block().booleanValue();
+		return usr.getRoleIds().stream().anyMatch(p -> p.asLong() == ADMIN_ROLE);
 	}
 
 	protected Role getRoleById(long id) {
-		return getGuild().getRoles().filter(p -> p.getId().asLong() == id).next().block();
+		return getGuild().getRoleById(Snowflake.of(id)).block();
 	}
 
 	protected Member getUserById(long id) {
-		return getGuild().getMembers().filter(p -> p.getId().asLong() == id).next().block();
+		return getGuild().getMemberById(Snowflake.of(id)).block();
 	}
 	
 	protected String getUserIfMentionable(long id) {
@@ -112,6 +112,7 @@ public class CoreHelpers {
 	}
 
 	protected Mono<Message> sendMessage(long channelId, String content) {
+		ChannelLogger.logMessageInfo("Creating message to send to Channel " + channelId + " with content '"+content+"'");
 		return getChannel(channelId).createMessage(content);
 	}
 	
@@ -141,7 +142,7 @@ public class CoreHelpers {
 			fs.close();
 			return messageId;
 		} catch (Exception e) {
-			ChannelLogger.logMessageError("Image acquisition failure: " + e.getStackTrace()[0]);
+			ChannelLogger.logMessageError("Image acquisition failure: ", e);
 			return sendMessage(channelId, "Couldn't find that image, sorry :(").block().getId().asString();
 		}
 	}

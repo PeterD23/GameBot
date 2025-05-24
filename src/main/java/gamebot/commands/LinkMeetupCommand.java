@@ -107,7 +107,7 @@ public class LinkMeetupCommand implements ISlashCommand {
 						.getChannel().block()
 						.createMessage("Congrats "+member.getMention()+", you're officially Meetup Verified™! Have a role for your efforts!"))
 				.onErrorResume(err -> {
-					ChannelLogger.logMessageError("Failed to verify Meetup ID due to "+err.getMessage());
+					ChannelLogger.logMessageError("Failed to verify Meetup ID:", err);
 					return event.editReply().withComponentsOrNull(constructMessage(code, "Something went wrong. I wasn't able to get your Meetup ID.", Color.RED));
 				}).then();
 		}

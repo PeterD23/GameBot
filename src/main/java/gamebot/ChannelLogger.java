@@ -23,7 +23,7 @@ public class ChannelLogger {
 		userToPing = guild.getMembers().filter(p -> p.getId().asLong() == ME).next().block();
 	}
 
-	public static void logMessage(String logEmoji, String message) {
+	private static void logMessage(String logEmoji, String message) {
 		// Prevents breaking the bot if the reference didn't init properly
 		if (logChannel != null)
 			logChannel.createMessage(logEmoji +" - "+message).block();
@@ -39,7 +39,8 @@ public class ChannelLogger {
 		logMessage(":warning:",message);
 	}
 	
-	public static void logMessageError(String message) {
+	public static void logMessageError(String prefix, Throwable error) {
+		String message = prefix + formatErrorMessage(error);
 		log.error(message);
 		logMessage(":no_entry:",message);
 	}
@@ -61,6 +62,10 @@ public class ChannelLogger {
 	}
 
 	private static String formatErrorMessage(Throwable throwable) {
+		if(throwable == null) {
+			return "";
+		}
+		
 		StringBuilder sb = new StringBuilder();
 		sb.append("\n");
 		sb.append("Type: ").append(throwable.getClass().getName()).append("\n");

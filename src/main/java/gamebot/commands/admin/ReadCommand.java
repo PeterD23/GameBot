@@ -38,7 +38,7 @@ public class ReadCommand implements ISlashCommand {
 		return command;
 	}
 
-	protected Mono<Void> sendMessage(Snowflake channelId, Container component) {
+	protected static Mono<Void> sendMessage(Snowflake channelId, Container component) {
 		return GameBot.gateway.getChannelById(channelId).flatMap(first -> {
 			TextChannel channel = (TextChannel) first;
 			return channel.createMessage().withComponents(component);
@@ -63,7 +63,7 @@ public class ReadCommand implements ISlashCommand {
 
 	@Override
 	public Mono<Void> submitCommand(ChatInputInteractionEvent event) {
-		String fileName = event.getOptionAsString("filename").get();
+		String fileName = event.getOptionAsString("filename").get().trim();
 		Optional<Channel> cc = event.getOptionAsChannel("cc_channel").blockOptional();
 		try {
 			ArrayList<String> lines = new ArrayList<>(
@@ -77,7 +77,8 @@ public class ReadCommand implements ISlashCommand {
 				return event.editReply().withComponents(component);
 			}).doOnError(err -> event.editReply("Outer loop broken")).then();
 		} catch (Exception e) {
-			return event.reply("Cannot find the file.");
+			ChannelLogger.logMessageError("Unable to find file '"+fileName+"' due to ", e);
+			return event.reply("Cannot load the file: "+e.getMessage()).withEphemeral(true);
 		}
 	}
 

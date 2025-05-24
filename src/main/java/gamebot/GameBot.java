@@ -104,7 +104,10 @@ public class GameBot {
 	private void buildChatInputInteractionEvent() {
 		gateway.on(ChatInputInteractionEvent.class, event -> Mono.fromRunnable(() -> {
 			listeners.forEach(element -> element.onCommand(event));
-		})).onErrorResume(t -> Mono.empty()).subscribe();
+		})).onErrorResume(t -> {
+			ChannelLogger.logMessageError("ChatInputInteractionEvent threw an error:", t);
+			return Mono.empty();
+		}).subscribe();
 
 		gateway.on(ModalSubmitInteractionEvent.class, event -> Mono.fromRunnable(() -> {
 			listeners.forEach(element -> element.onCommand(event));
@@ -117,6 +120,7 @@ public class GameBot {
 			try {
 				admin.tick();
 			} catch (Exception e) {
+				ChannelLogger.logMessageError("Interval tick threw an error:", e);
 				e.printStackTrace();
 			}
 		}, 1, 1, TimeUnit.MINUTES);

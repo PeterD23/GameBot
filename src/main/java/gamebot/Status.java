@@ -50,7 +50,7 @@ public class Status {
 			process.waitFor();
 			return sb.toString();
 		} catch (IOException | InterruptedException e) {
-			ChannelLogger.logMessageError("Bash script failed to execute: " + e.getStackTrace()[0]);
+			ChannelLogger.logMessageError("Bash script failed to execute: ",e);
 			return ":x:";
 		}
 	}
