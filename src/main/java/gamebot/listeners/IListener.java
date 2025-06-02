@@ -1,6 +1,8 @@
 package gamebot.listeners;
 
 import discord4j.core.event.domain.guild.MemberJoinEvent;
+import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
+import discord4j.core.event.domain.interaction.ModalSubmitInteractionEvent;
 import discord4j.core.event.domain.lifecycle.ReadyEvent;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.event.domain.message.MessageUpdateEvent;
@@ -23,11 +25,11 @@ public interface IListener {
 		return;
 	};
 	
-	default public void onReact(ReactionAddEvent event) {
+	default public void onCommand(ChatInputInteractionEvent event) {
 		return;
 	};
 	
-	default public void onUnreact(ReactionRemoveEvent event) {
+	default public void onCommand(ModalSubmitInteractionEvent event) {
 		return;
 	};
 	

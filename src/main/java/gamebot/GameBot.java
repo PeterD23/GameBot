@@ -1,34 +1,38 @@
 package gamebot;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.function.Function;
+
+import org.reactivestreams.Publisher;
 
 import discord4j.common.util.Snowflake;
 import discord4j.core.DiscordClient;
 import discord4j.core.GatewayDiscordClient;
 import discord4j.core.event.domain.guild.MemberJoinEvent;
+import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
+import discord4j.core.event.domain.interaction.ComponentInteractionEvent;
+import discord4j.core.event.domain.interaction.ModalSubmitInteractionEvent;
 import discord4j.core.event.domain.lifecycle.ReadyEvent;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.event.domain.message.MessageUpdateEvent;
-import discord4j.core.event.domain.message.ReactionAddEvent;
-import discord4j.core.event.domain.message.ReactionRemoveEvent;
 import discord4j.core.object.entity.Guild;
 import discord4j.gateway.intent.IntentSet;
+import gamebot.listeners.AdminListener;
 import gamebot.listeners.IListener;
-import gamebot.listeners.IntervalListener;
-import gamebot.listeners.RoleChannelManagementListener;
 import gamebot.listeners.UserListener;
 import meetup.selenium.MeetupEventManager;
-import onlineevent.EventManager;
 import reactor.core.publisher.Mono;
 
 public class GameBot {
 
 	public static GatewayDiscordClient gateway;
 	private ArrayList<IListener> listeners = new ArrayList<>();
-	private long SERVER = 731597823640076319L;
+	public static long SERVER = 731597823640076319L;
 
 	public static void main(String[] args) {
 		new GameBot().init(args);
@@ -38,10 +42,9 @@ public class GameBot {
 		if (args.length == 0)
 			throw new IllegalArgumentException("Please enter a client key.");
 
-		IntervalListener interval = new IntervalListener();
-		listeners.add(new RoleChannelManagementListener());
+		AdminListener admin = new AdminListener();
+		listeners.add(admin);
 		listeners.add(new UserListener());
-		listeners.add(interval);
 
 		DiscordClient client = DiscordClient.create(args[0]);
 		gateway = client.gateway().setEnabledIntents(IntentSet.all()).login().block();
@@ -49,14 +52,22 @@ public class GameBot {
 		buildMemberJoinEvent();
 		buildMessageCreateEvent();
 		buildMessageUpdateEvent();
-		buildReactionAddEvent();
-		buildReactionRemoveEvent();
+		buildChatInputInteractionEvent();
 		MeetupEventManager.init();
-		EventManager.init();
-		buildInterval(interval);
+		buildTimedInterval(admin);
 		SpotifyHelpers.init(args[1], args[2]);
 
 		gateway.onDisconnect().block();
+	}
+
+	public static <E extends ComponentInteractionEvent, T> void createTempInteraction(Class<E> event,
+			Function<E, Publisher<T>> function, Duration timeout) {
+		String callerMethod = Thread.currentThread().getStackTrace()[2].getMethodName();
+		ChannelLogger.logMessageInfo("Creating new temp listener for " + event.getTypeName() + " from " + callerMethod);
+		gateway.on(event, function).timeout(timeout).onErrorResume(TimeoutException.class, ignore -> {
+			ChannelLogger.logMessageWarning("Timeout: " + event.getTypeName() + " from " + callerMethod);
+			return Mono.empty();
+		}).then().subscribe();
 	}
 
 	private void buildReadyEvent() {
@@ -78,7 +89,7 @@ public class GameBot {
 	private void buildMessageCreateEvent() {
 		gateway.on(MessageCreateEvent.class, event -> Mono.fromRunnable(() -> {
 			listeners.forEach(element -> element.onMessage(event));
-		})).onErrorResume(t -> { 
+		})).onErrorResume(t -> {
 			ChannelLogger.logHighPriorityMessage("MessageCreateEvent error occurred.", t);
 			return Mono.empty();
 		}).subscribe();
@@ -90,24 +101,26 @@ public class GameBot {
 		})).onErrorResume(t -> Mono.empty()).subscribe();
 	}
 
-	private void buildReactionAddEvent() {
-		gateway.on(ReactionAddEvent.class, event -> Mono.fromRunnable(() -> {
-			listeners.forEach(element -> element.onReact(event));
+	private void buildChatInputInteractionEvent() {
+		gateway.on(ChatInputInteractionEvent.class, event -> Mono.fromRunnable(() -> {
+			listeners.forEach(element -> element.onCommand(event));
+		})).onErrorResume(t -> {
+			ChannelLogger.logMessageError("ChatInputInteractionEvent threw an error:", t);
+			return Mono.empty();
+		}).subscribe();
+
+		gateway.on(ModalSubmitInteractionEvent.class, event -> Mono.fromRunnable(() -> {
+			listeners.forEach(element -> element.onCommand(event));
 		})).onErrorResume(t -> Mono.empty()).subscribe();
 	}
 
-	private void buildReactionRemoveEvent() {
-		gateway.on(ReactionRemoveEvent.class, event -> Mono.fromRunnable(() -> {
-			listeners.forEach(element -> element.onUnreact(event));
-		})).onErrorResume(t -> Mono.empty()).subscribe();
-	}
-
-	private void buildInterval(IntervalListener interval) {
+	private void buildTimedInterval(AdminListener admin) {
 		ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(1);
 		scheduledExecutorService.scheduleAtFixedRate(() -> {
 			try {
-				interval.tick();
+				admin.tick();
 			} catch (Exception e) {
+				ChannelLogger.logMessageError("Interval tick threw an error:", e);
 				e.printStackTrace();
 			}
 		}, 1, 1, TimeUnit.MINUTES);

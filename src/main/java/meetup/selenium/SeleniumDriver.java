@@ -101,7 +101,7 @@ public class SeleniumDriver {
 				return ids;
 			ArrayList<WebElement> cards = Elements(baseXPath);
 			for (WebElement card : cards) {
-				ChannelLogger.logMessage("Adding card to list...");
+				ChannelLogger.logMessageInfo("Adding card to list...");
 				String url = getEventUrl(card);
 				ids.add(extractIdFromMeetupUrl(url));
 			}
@@ -113,18 +113,19 @@ public class SeleniumDriver {
 		return ids;
 	}
 
-	public long sendCode(String meetupUrl, String code) {
+	public long checkCode(String code) {
 		lock();
-		long meetupId = new Long(extractIdFromMeetupUrl(meetupUrl)).longValue();
+		String messagesUrl = ("https://www.meetup.com/messages");
+		long meetupId = 0L;
 		try {
-			webDriver.get(meetupUrl);
-			Element("//a[contains(@id, 'message-link')]").click();
+			webDriver.get(messagesUrl);
+			Element("//p[text()='"+code+"']").click();
 			Thread.sleep(3000);
-			Element("//textarea[contains(@class, 'composeBox-textArea')]").click();
-			Element("//textarea[contains(@class, 'composeBox-textArea')]").sendKeys(code);
-			ClickElement("//button[contains(@class, 'composeBox-sendButton')]");
+			Element("//div[contains(@class,'styles_messages')]//button").click();
+			String profileUrl = Element("//a[text()='View Profile']").getAttribute("href");
+			meetupId = new Long(extractIdFromMeetupUrl(profileUrl)).longValue();
 		} catch (Exception e) {
-			return 0;
+			ChannelLogger.logMessageError("Error occurred during verification due to ",e);
 		} finally {
 			unlock();
 		}
@@ -163,16 +164,16 @@ public class SeleniumDriver {
 			ArrayList<WebElement> cards = Elements(baseXPath);
 			ArrayList<String> urls = new ArrayList<>();
 			for (WebElement card : cards) {
-				ChannelLogger.logMessage("Adding card to list...");
+				ChannelLogger.logMessageInfo("Adding card to list...");
 				urls.add(getEventUrl(card));
 			}
 			for (String url : urls) {
 				log.info("Resolving URL " + url);
-				ChannelLogger.logMessage("Resolving URL " + url.replace("https://www.", ""));
+				ChannelLogger.logMessageInfo("Resolving URL " + url.replace("https://www.", ""));
 				webDriver.get(url);
 				eventData.add(compileEvent(url));
 				webDriver.get(meetupUrl);
-				ChannelLogger.logMessage("Successfully compiled event");
+				ChannelLogger.logMessageInfo("Successfully compiled event");
 			}
 			return eventData;
 		} catch (Exception e) {
@@ -200,7 +201,7 @@ public class SeleniumDriver {
 			wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath(xpath)));
 			return true;
 		} catch (Exception e) {
-			ChannelLogger.logMessage(reason + ": Could not find element");
+			ChannelLogger.logMessageError(reason + ": Could not find element", e);
 			return false;
 		}
 	}

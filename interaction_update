@@ -1,0 +1,55 @@
+Hey everyone! I've received a shiny new update! :partying_face: :partying_face:
+
+# Interactions Update
+_TL;DR new commands go brrr, verify easier, less hacky role subscriptions_
+
+It's been a full year since I last had a major update so my creator decided to make some changes. Discord released Components V2 last month so figured it was worth migrating over to Discords Interactions system (**which has been available since literally before I even existed so overdue is an understatement** :angry:) to try it out!
+
+---
+## Major Changes
+
+- :fire: Verify has now been simplified, instead of typing !verify I'll now just parse your response directly in the Introductions channel. 
+- :computer: The old !command system has now been replaced with Interactions w/Components V2, detailed in the next section
+- :x: Removed online event command, will be replaced in a future update with Discord Events
+- :joystick: Added /subscribe to replace add-genres-here, R.I.P :headstone: (details under New Genre Subscription)
+- :broom: Cleaned up the code and restructured it for "simplicity" (Reactor is anything but simple :radioactive:)
+
+---
+## Interactions
+
+Originally, if you wanted to invoke any of my functionality you would start your message with an ! followed by the name of the command.
+This has now been replaced with Discords Slash Command system. How does it work? If you're a verified member you can now type / to show a list of possible commands or use /help to view the full list. Some of these commands have changed from their old functionality so I'll break those down below.
+**The Interactions System is ephemeral, so any replies you receive from me will be shown only to you and no-one else.**
+
+### Poll
+
+I'm sad to replace this but Discord's poll system is considerably better. Now if you type /poll you will receive a dialog that asks you to put in the name of the poll and a freetype field where you can type as many options as you'd like! This will then create a Discord poll and pings everyone subscribed to the Poll Watcher role.
+https://media.discordapp.net/attachments/731873233933959198/1370909847876272288/image.png?ex=682136ca&is=681fe54a&hm=71cfff916814e3e046cf67a125620a08d9dc20d52deb6077a3cc6ac3d2cb7bf3&=&format=webp&quality=lossless,https://media.discordapp.net/attachments/731873233933959198/1370910105872367646/image.png?ex=68213707&is=681fe587&hm=0e3b760904d0823e91b394b305c76b7d0d5ef124ff2af0d9641de0e67690e2fa&=&format=webp&quality=lossless,https://media.discordapp.net/attachments/731873233933959198/1370909478668472441/image.png?ex=68213671&is=681fe4f1&hm=5e155899b7bf5f63b87b0c5e91078cb50d614d9a495b5c24bc297009784ed449&=&format=webp&quality=lossless
+In future I'll add the ability to ping specific users instead of everyone with the Poll Watcher role.
+
+### Watch
+
+This replaces !watch-poll and !watch-event. Now by typing /watch you'll see two buttons that you can use to turn those roles on or off.
+https://media.discordapp.net/attachments/731873233933959198/1370896652440703086/image.png?ex=68212a7f&is=681fd8ff&hm=1a191f2b03aee4cc0aae9a22329ad4f699aac711944132921e6e43bdff491e1b&=&format=webp&quality=lossless
+
+### Link Meetup
+
+This one was an absolute bastard to rewrite. I think a lot of you folks probably aren't aware that this is a thing I can do but did you know you can link your Discord profile to your Meetup profile?
+Previously if you typed !link-meetup I would send you a DM asking you to post the link to your Meetup Profile and through a hacky method of me sending you a confirmation code on Meetup you could verify your identity and I'd give you a shiny role as a reward! 
+Well that doesn't work anymore because Meetup no longer lets you message users unless you pay a subscription fee of £120 a year.
+
+However, I am not one to be bested by corporate bullshit so here's a much nicer method:
+https://media.discordapp.net/attachments/731873233933959198/1368723383499489320/image.png?ex=681fd9fc&is=681e887c&hm=6ecb07de934b53ac7ed39056fdfcf7b8df6ec578163e172fdc51668a59aba626
+Thanks to Adele I'm now a Meetup co-organiser, and turns out while you can't DM other users without a subscription you **can** DM the group organisers. So I've flipped the method around, and now Meetup verification should be much easier to do!
+
+## New Genre Subscription
+
+Previously, genre channels were subscribed to using the add-genres-here channel with reacts to add those roles. However it was super hacky so now as part of the Interactions system you will now get this menu:
+https://media.discordapp.net/attachments/731873233933959198/1370896946398498836/image.png?ex=68212ac6&is=681fd946&hm=889bb13a5f3c3a4233759a68ccb7e64f99b7e79a4e2f7297feb2fd67cc2560a6&=&format=webp&quality=lossless,https://media.discordapp.net/attachments/731873233933959198/1370911030301163520/image.png?ex=682137e3&is=681fe663&hm=bfbe39486f41cc457590edd4ddcd3c4781fc1c5c3f88eea6ed09a6e60086b64e&=&format=webp&quality=lossless
+This multi-select menu will let you subscribe or unsubscribe from the individual genre channels as you see fit.
+
+
+---
+And that's it for now. I'd add more but this was a pretty huge code change as-is and also Discord has a 4000 character limit on messages. <@97036843924598784> for any feature requests, code changes can be found on here if you want to be judgemental
+![Interaction Update](https://github.com/PeterD23/GameBot/pull/18)
+---

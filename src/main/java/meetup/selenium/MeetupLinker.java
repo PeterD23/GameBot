@@ -18,7 +18,6 @@ public class MeetupLinker {
 	// Hey Java Generics, can you fucking please support primitive types so I don't have to keep boxing and unboxing shit
 	private static Logger log = Loggers.getLogger("logger");
 	private static HashMap<Long, String> queuedUsers = new HashMap<>();
-	private static HashMap<Long, Long> tempLinked = new HashMap<>();
 	private static HashMap<Long, Long> verified = new HashMap<>();
 	
 	public static void readVerified() {
@@ -86,14 +85,9 @@ public class MeetupLinker {
 		return queuedUsers.get(userIdLong);
 	}
 	
-	public static void addMeetupId(long userId, long meetupId) {
-		tempLinked.put(new Long(userId), new Long(meetupId));
-	}
-	
-	public static void verifyUser(long userId) {
+	public static void linkUserToMeetup(long userId, long meetupId) {
 		Long userIdLong = new Long(userId);
-		verified.put(userIdLong, tempLinked.get(userIdLong));
-		tempLinked.remove(userIdLong);
+		verified.put(userIdLong, meetupId);
 		queuedUsers.remove(userIdLong);
 		saveVerified();
 	}

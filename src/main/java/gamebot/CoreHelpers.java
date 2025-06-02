@@ -7,17 +7,18 @@ import java.util.ArrayList;
 import discord4j.common.util.Snowflake;
 import discord4j.core.GatewayDiscordClient;
 import discord4j.core.event.domain.lifecycle.ReadyEvent;
+import discord4j.core.object.component.TopLevelMessageComponent;
 import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.GuildEmoji;
 import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.Message;
 import discord4j.core.object.entity.Role;
-import discord4j.core.object.entity.channel.PrivateChannel;
 import discord4j.core.object.entity.channel.TextChannel;
 import discord4j.core.spec.MessageCreateSpec;
 import discord4j.core.spec.RoleCreateSpec;
 import discord4j.rest.util.Permission;
 import discord4j.rest.util.PermissionSet;
+import reactor.core.publisher.Mono;
 
 public class CoreHelpers {
 
@@ -40,6 +41,10 @@ public class CoreHelpers {
 	protected void init(ReadyEvent event) {
 		cli = event.getClient();
 		cli.edit().withUsername("Game Bot").block();
+	}
+	
+	protected String mentionMe() {
+		return getUserIfMentionable(97036843924598784L);
 	}
 
 	protected String getEveryoneMention() {
@@ -76,15 +81,15 @@ public class CoreHelpers {
 	protected boolean isAdmin(Member usr) {
 		if (Utils.adminsDenied())
 			return false;
-		return usr.getRoles().any(p -> p.getId().asLong() == ADMIN_ROLE).block().booleanValue();
+		return usr.getRoleIds().stream().anyMatch(p -> p.asLong() == ADMIN_ROLE);
 	}
 
 	protected Role getRoleById(long id) {
-		return getGuild().getRoles().filter(p -> p.getId().asLong() == id).next().block();
+		return getGuild().getRoleById(Snowflake.of(id)).block();
 	}
 
 	protected Member getUserById(long id) {
-		return getGuild().getMembers().filter(p -> p.getId().asLong() == id).next().block();
+		return getGuild().getMemberById(Snowflake.of(id)).block();
 	}
 	
 	protected String getUserIfMentionable(long id) {
@@ -98,22 +103,36 @@ public class CoreHelpers {
 
 	protected void editMessage(long channelId, String messageId, String newMessage) {
 		getChannel(channelId).getMessageById(Snowflake.of(messageId)).block().edit().withContentOrNull(newMessage).block();
-		ChannelLogger.logMessage("Editing message ID " + messageId + " with String of length " + newMessage.length());
+		ChannelLogger.logMessageInfo("Editing message ID " + messageId + " with String of length " + newMessage.length());
 	}
 
 	protected void deleteMessage(long channelId, String messageId, String reason) {
-		getChannel(channelId).getMessageById(Snowflake.of(messageId)).block().delete(reason).block();
-		ChannelLogger.logMessage("Deleting message ID " + messageId + " with reason "+reason);
+		getChannel(channelId).getMessageById(Snowflake.of(messageId)).doOnSuccess(message -> message.delete(reason)).block();
+		ChannelLogger.logMessageInfo("Deleting message ID " + messageId + " with reason "+reason);
 	}
 
-	protected String sendMessage(long channelId, String message) {
-		return getChannel(channelId).createMessage(message).block().getId().asString();
+	protected Mono<Message> sendMessage(long channelId, String content) {
+		ChannelLogger.logMessageInfo("Creating message to send to Channel " + channelId + " with content '"+content+"'");
+		return getChannel(channelId).createMessage(content);
+	}
+	
+	protected Mono<Void> sendReply(Message message, String content) {
+		return getChannel(message.getChannelId().asLong())
+				.createMessage(content).withMessageReferenceId(message.getId()).then();
+	}
+	
+	protected Mono<Message> sendMessage(long channelId, String content, TopLevelMessageComponent... components) {
+		return getChannel(channelId).createMessage(content).withComponents(components);
+	}
+	
+	protected Mono<Void> pinMessage(long channelId, Snowflake messageId){
+		return getChannel(channelId).getMessageById(messageId).doOnSuccess(message -> message.pin()).then();
 	}
 
 	protected String embedImage(long channelId, String imageName) {
 		char ps = File.separatorChar;
 		String filePath = System.getProperty("user.home") + ps + "Pictures" + ps + imageName;
-		ChannelLogger.logMessage("Looking for " + filePath);
+		ChannelLogger.logMessageInfo("Looking for " + filePath);
 		try (FileInputStream fs = new FileInputStream(filePath)) {
 			String messageId = getChannel(channelId).createMessage(MessageCreateSpec.builder()
 					.addFile(imageName, fs).build())
@@ -123,23 +142,15 @@ public class CoreHelpers {
 			fs.close();
 			return messageId;
 		} catch (Exception e) {
-			ChannelLogger.logMessage("Image acquisition failure: " + e.getStackTrace()[0]);
-			return sendMessage(channelId, "Couldn't find that image, sorry :(");
+			ChannelLogger.logMessageError("Image acquisition failure: ", e);
+			return sendMessage(channelId, "Couldn't find that image, sorry :(").block().getId().asString();
 		}
 	}
 
 	protected Message getMessage(long channelId, long messageId) {
 		return getChannel(channelId).getMessageById(Snowflake.of(messageId)).block();
 	}
-
-	protected String sendPrivateMessage(long channelId, String message) {
-		return getPrivateChannel(channelId).createMessage(message).block().getId().asString();
-	}
-
-	protected PrivateChannel getPrivateChannel(long id) {
-		return (PrivateChannel) cli.getChannelById(Snowflake.of(id)).block();
-	}
-
+	
 	protected TextChannel getChannel(long id) {
 		return (TextChannel) getGuild().getChannelById(Snowflake.of(id)).block();
 	}

@@ -17,7 +17,7 @@ public class Status {
 		try {
 			statusChecks = Files.readLines(new File("statuses"), Charset.defaultCharset());
 		} catch (Exception e) {
-			ChannelLogger.logMessage("Failed to read statuses file");
+			ChannelLogger.logMessageWarning("Failed to read statuses file");
 		}
 	}
 
@@ -50,7 +50,7 @@ public class Status {
 			process.waitFor();
 			return sb.toString();
 		} catch (IOException | InterruptedException e) {
-			ChannelLogger.logMessage("Bash script failed to execute: " + e.getStackTrace()[0]);
+			ChannelLogger.logMessageError("Bash script failed to execute: ",e);
 			return ":x:";
 		}
 	}
