@@ -1,5 +1,7 @@
 package gamebot.listeners;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.Random;
 
@@ -88,6 +90,7 @@ public class UserListener extends CoreHelpers implements IListener {
 			return;
 
 		Member usr = event.getMember();
+		
 		ChannelLogger.logMessageInfo("Somebody new joined the server! User ID "+usr.getId().asLong());
 		introduceYourself(usr, INTRODUCTIONS);
 	}
@@ -158,11 +161,15 @@ public class UserListener extends CoreHelpers implements IListener {
 	}
 
 	private void introduceYourself(Member member, long channelId) {
+		Instant userCreationTime = member.getId().getTimestamp();
+		long accountAge = ChronoUnit.DAYS.between(userCreationTime, Instant.now());		
 		if (hasRole(member, VERIFIED)) {
 			sendMessage(channelId, "Hello " + member.getMention() + "! " + Utils.getARandomGreeting()).block();
-		} else {
+		} else if(accountAge > 14){
 			sendMessage(channelId, "Hello " + member.getMention()
 					+ "! Welcome to the server! You'll need to get verified before you can post in other channels, so type a short (30 words or more) introduction about yourself, and your meetup name.").block();
+		} else {
+			sendMessage(channelId, "Hello " + member.getMention() + "! Welcome to the server! You appear to be less than 14 days old so I am unable to automatically verify you. Please sit tight and a member of our staff will be with you shortly.");
 		}
 	}
 }
