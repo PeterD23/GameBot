@@ -17,6 +17,7 @@ import discord4j.core.object.component.Separator;
 import discord4j.core.object.component.TextDisplay;
 import discord4j.core.object.component.TopLevelMessageComponent;
 import discord4j.core.object.entity.Member;
+import discord4j.core.object.entity.channel.MessageChannel;
 import discord4j.core.object.reaction.ReactionEmoji;
 import discord4j.discordjson.json.ApplicationCommandRequest;
 import discord4j.rest.util.Color;
@@ -89,18 +90,43 @@ public class LinkMeetupCommand implements ISlashCommand {
 					"The browser is currently busy at the moment, try again in a short while! Can't get the staff these days...")
 					.withEphemeral(true);
 		}
-		if (event.getCustomId().equals("check-code")) {
+		if (event.getCustomId().equals("check-code")) {	
 			Member member = event.getInteraction().getMember().get();
 			long userId = member.getId().asLong();
 
 			String code = MeetupLinker.getUsersCode(userId);
-			return event.deferEdit().then(Mono.fromRunnable(() -> {
+			return event.deferEdit().then(Mono.fromCallable(() -> {
+                ChannelLogger.logMessageInfo("Generating a new button listener for Link-Meetup");
+                return SeleniumDriver.getInstance().checkCode(code);
+            })
+            .flatMap(meetupId -> {
+                if (meetupId == 0L) {
+                    ChannelLogger.logMessageWarning("Failed to verify Meetup ID");
+                    return Mono.fromCallable(() -> constructMessage(code, "Something went wrong. I wasn't able to get your Meetup ID.", Color.RED))
+                    		.flatMap(components -> event.editReply().withComponentsOrNull(components))
+                    		.then();
+                }
+                return member.addRole(Snowflake.of(MEETUP_VERIFIED))
+                        .then(Mono.fromRunnable(() -> MeetupLinker.linkUserToMeetup(userId, meetupId)))
+                        .then(event.deleteReply())
+                        .then(event.getInteraction().getChannel())
+                        .ofType(MessageChannel.class)
+                        .flatMap(channel -> channel.createMessage("Congrats "+ member.getMention() +", you're officially Meetup Verified™! Have a role for your efforts!"))
+                        .then();
+            }));
+			
+		}
+		return Mono.empty();
+	}
+	
+	/** THE OLD BAD WAY
+	 * return event.deferEdit().then(Mono.fromRunnable(() -> {
 				ChannelLogger.logMessageInfo("Generating a new button listener for Link-Meetup");
 				long meetupId = SeleniumDriver.getInstance().checkCode(code);
 				if (meetupId == 0L) {
 					throw new RuntimeException();
 				}
-				member.addRole(Snowflake.of(MEETUP_VERIFIED));
+				member.addRole(Snowflake.of(MEETUP_VERIFIED)).block();
 				MeetupLinker.linkUserToMeetup(userId, meetupId);
 			})).then(event.deleteReply())
 				.then(event.getInteraction()
@@ -110,7 +136,5 @@ public class LinkMeetupCommand implements ISlashCommand {
 					ChannelLogger.logMessageError("Failed to verify Meetup ID:", err);
 					return event.editReply().withComponentsOrNull(constructMessage(code, "Something went wrong. I wasn't able to get your Meetup ID.", Color.RED));
 				}).then();
-		}
-		return Mono.empty();
-	}
+	 */
 }

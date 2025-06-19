@@ -63,6 +63,10 @@ public class MeetupLinker {
 		return false;
 	}
 	
+	public static long getMeetupUser(long id) {
+		return verified.getOrDefault(id, 0L);
+	}
+	
 	public static long getUserByMeetupId(long id) {
 		log.info("Searching for id "+id+"... in verified set of "+verified.size());
 		for (Map.Entry<Long, Long> entry : verified.entrySet()) {

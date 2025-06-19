@@ -1,10 +1,13 @@
 package meetup.selenium;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 
+import org.apache.commons.io.FileUtils;
 import org.openqa.selenium.By;
+import org.openqa.selenium.Cookie;
 import org.openqa.selenium.StaleElementReferenceException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
@@ -18,6 +21,7 @@ import com.google.common.io.Files;
 
 import gamebot.ChannelLogger;
 import io.github.bonigarcia.wdm.WebDriverManager;
+import reactor.core.publisher.Mono;
 import reactor.util.Logger;
 import reactor.util.Loggers;
 
@@ -63,32 +67,43 @@ public class SeleniumDriver {
 		WebDriverManager.chromedriver().setup();
 		webDriver = new ChromeDriver(setHeadlessMode());
 		wait = new WebDriverWait(webDriver, 15).ignoring(StaleElementReferenceException.class);
-		if (login())
-			log.info("Successfully logged in to Meetup");
-		else
-			log.error("Failed to log into Meetup");
 	}
 
 	private ChromeOptions setHeadlessMode() {
-		return new ChromeOptions().addArguments("--headless", "--window-size=1920,1080");
+		return new ChromeOptions().addArguments("--headless","--window-size=1920,1080");
+	}
+	
+	public String refreshCookie(String token) {
+		try {
+			FileUtils.write(new File("cookie"), token, Charset.defaultCharset());
+			login();
+			return "Mmmmm... Delicious cookie :cookie:";
+		} catch (IOException e) {
+			ChannelLogger.logMessageError("Couldn't save the cookie :(", e);
+			return "I think that cookie was rancid because my system didn't like it :(";
+		}
 	}
 
-	public boolean login() {
+	public Mono<Void> login() {
+		// Want to see a magic trick?
 		lock();
 		try {
-			ArrayList<String> creds = new ArrayList<>(Files.readLines(new File("creds"), Charset.defaultCharset()));
 			webDriver.get("https://www.meetup.com");
-			Element("//a[contains(@id, 'login-link')]").click();
-			Element("//input[contains(@type, 'email')]").sendKeys(creds.get(0));
-			Element("//input[contains(@type, 'password')]").sendKeys(creds.get(1));
-			ClickElement("//button[contains(text(), 'Log in')]");
-			ClickElement("//button[@id='onetrust-accept-btn-handler']");
+			Thread.sleep(3000);
+			// Pass the session cookie in, organically sourced
+			webDriver.manage().addCookie(
+					new Cookie(
+							"__meetup_auth_access_token", 
+							Files.readLines(new File("cookie"), Charset.defaultCharset()).get(0)
+							));
+			webDriver.navigate().refresh();
+			// Tada! How to log in to a website without solving a captcha
+			Element("//img[@alt='Photo of Bot McBotterson']");
 			unlock();
-			return true;
+			return ChannelLogger.logMessageInfo("Successfully logged into Meetup :cookie:");
 		} catch (Exception e) {
-			ChannelLogger.logHighPriorityMessage("Unable to login to Meetup.", e);
 			unlock();
-			return false;
+			return ChannelLogger.logHighPriorityMessage("Unable to login to Meetup. Cookie may be expired and need to be refreshed.", e);
 		}
 	}
 	
@@ -259,6 +274,13 @@ public class SeleniumDriver {
 			}
 			attempts++;
 		}
+	}
+
+	public void rsvpUser(String eventId, String[] data) {
+		webDriver.get(meetupUrl+eventId+"/attendees");
+		Element("//input[@data-testid='attendee-search']").sendKeys(data[0]);
+		ClickElement("//img[@src='"+data[1]+"']/ancestor::div[6]//button[@aria-haspopup='menu']");
+		ClickElement("//button[text()='Move to \"Going\"']");
 	}
 
 }

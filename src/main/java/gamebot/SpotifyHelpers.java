@@ -9,6 +9,7 @@ import com.wrapper.spotify.model_objects.specification.PlaylistTrack;
 import com.wrapper.spotify.requests.authorization.client_credentials.ClientCredentialsRequest;
 import com.wrapper.spotify.requests.data.playlists.GetPlaylistsItemsRequest;
 
+import reactor.core.publisher.Mono;
 import reactor.util.Logger;
 import reactor.util.Loggers;
 
@@ -16,15 +17,17 @@ public class SpotifyHelpers extends CoreHelpers {
 
 	private static Logger log = Loggers.getLogger("logger");
 	private static SpotifyApi api;
-		
-	public static void init(String clientId, String clientSecret) {
-		if(clientId == null || clientSecret == null) {
-			log.error("Client ID and/or Client Secret not specified.");
-			return;
-		}
-		api = new SpotifyApi.Builder().setClientId(clientId).setClientSecret(clientSecret).build();
+
+	public static Mono<Void> init(String clientId, String clientSecret) {
+		return Mono.fromRunnable(() -> {
+			if (clientId == null || clientSecret == null) {
+				log.error("Client ID and/or Client Secret not specified.");
+				return;
+			}
+			api = new SpotifyApi.Builder().setClientId(clientId).setClientSecret(clientSecret).build();
+		});
 	}
-	
+
 	private static void getAccessToken() {
 		/* Create a request object. */
 		ClientCredentialsRequest request = api.clientCredentials().build();
@@ -40,19 +43,19 @@ public class SpotifyHelpers extends CoreHelpers {
 			log.error("Access token retrieval failed. 123-PLSFIX-ACCESS");
 		}
 	}
-	
+
 	public static String recommendSong(String playlistId) {
-		if(api == null) {
+		if (api == null) {
 			log.error("Unable to recommend song due to uninitialised API.");
 			return "";
 		}
 		getAccessToken();
 		GetPlaylistsItemsRequest itemsRequest = api.getPlaylistsItems(playlistId).build();
-		Random random = new Random();		
+		Random random = new Random();
 		try {
 			Paging<PlaylistTrack> tracks = itemsRequest.execute();
 			Integer song = new Integer(random.nextInt(tracks.getTotal().intValue()));
-			
+
 			itemsRequest = api.getPlaylistsItems(playlistId).offset(song).build();
 			PlaylistTrack track = itemsRequest.execute().getItems()[0];
 			return track.getTrack().getExternalUrls().get("spotify");
@@ -61,6 +64,5 @@ public class SpotifyHelpers extends CoreHelpers {
 			return "";
 		}
 	}
-	
-	
+
 }

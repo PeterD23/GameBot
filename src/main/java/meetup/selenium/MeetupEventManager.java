@@ -12,14 +12,17 @@ import org.apache.commons.io.FileUtils;
 
 import gamebot.ChannelLogger;
 import gamebot.Utils;
+import reactor.core.publisher.Mono;
 
 public class MeetupEventManager {
 
 	private static ArrayList<Tuple<String, String, String>> events;
 	
-	public static void init() {
-		events = new ArrayList<>();
-		readEventData();		
+	public static Mono<Void> init() {
+		return Mono.fromRunnable(() -> {
+			events = new ArrayList<>();
+			readEventData();
+		});
 	}
 	
 	public static void addEvent(String eventId, String messageId, String timeToDelete) {

@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.net.URL;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
+import java.time.format.FormatStyle;
 import java.time.temporal.ChronoField;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -15,6 +16,7 @@ import java.util.Random;
 import javax.imageio.ImageIO;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.imgscalr.Scalr;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
@@ -24,6 +26,7 @@ import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 
+import discord4j.discordjson.json.ComponentData;
 import discord4j.rest.util.Color;
 
 public class Utils {
@@ -38,7 +41,7 @@ public class Utils {
 		int b = random.nextInt(200) + 55;
 		return Color.of(r, g, b);
 	}
-
+	
 	private static String randomHellos[] = new String[] { "I hope you're having a wonderful day! :D",
 			"Do you get to the cloud district often?", "Nice weather we're having!",
 			"Are you excited for any upcoming games?", "I am certainly enjoying your company :heart:",
@@ -69,11 +72,25 @@ public class Utils {
 		return denyAdmins;
 	}
 	
+	public static int recursiveLength(ComponentData data) {
+		if(data.components().isAbsent())
+			return data.content().isAbsent() ? 0 : data.content().get().length();
+		return data.components().get().stream().mapToInt(d -> recursiveLength(d)).sum();
+	}
+	
+	public static String tabPad(int size) {
+		return StringUtils.rightPad("\t", size);
+	}
+	
 	public static DateTimeFormatter getDateFormatter() {
 		DateTimeFormatterBuilder builder = new DateTimeFormatterBuilder();
-		builder.append(DateTimeFormatter.ISO_OFFSET_DATE);
+		builder.append(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
 		builder.parseDefaulting(ChronoField.HOUR_OF_DAY, 0);
 		return builder.toFormatter();
+	}
+	
+	public static DateTimeFormatter getHumanReadableDateFormatter() {
+		return DateTimeFormatter.ofLocalizedDateTime(FormatStyle.FULL, FormatStyle.SHORT);
 	}
 
 	public static ObjectMapper buildObjectMapper() {

@@ -4,6 +4,7 @@ import discord4j.common.util.Snowflake;
 import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.channel.TextChannel;
+import reactor.core.publisher.Mono;
 import reactor.util.Logger;
 import reactor.util.Loggers;
 
@@ -18,43 +19,51 @@ public class ChannelLogger {
 	private static Logger log = Loggers.getLogger("logger");
 	private static int maxStackLength = 8;
 
-	public static void init(Guild guild) {
-		logChannel = (TextChannel) guild.getChannelById(Snowflake.of(LOG)).block();
-		userToPing = guild.getMembers().filter(p -> p.getId().asLong() == ME).next().block();
+	public static Mono<Void> init(Guild guild) {
+		return guild.getChannelById(Snowflake.of(LOG)).ofType(TextChannel.class).flatMap(channel -> {
+			logChannel = channel;
+			return guild.getMembers()
+					.filter(p -> p.getId().asLong() == ME)
+					.next()
+					.flatMap(member -> Mono.fromRunnable(() -> userToPing = member))
+					.then(logMessage(":white_check_mark:", ":sparkles: Game Bot v1.1: 'Interaction Update' Successfully online! :sparkles:")); 
+		});	
 	}
 
-	private static void logMessage(String logEmoji, String message) {
+	private static Mono<Void> logMessage(String logEmoji, String message) {
 		// Prevents breaking the bot if the reference didn't init properly
 		if (logChannel != null)
-			logChannel.createMessage(logEmoji +" - "+message).block();
+			return logChannel.createMessage(logEmoji +" - "+message).then();
+		return Mono.empty();
 	}
 	
-	public static void logMessageInfo(String message) {
+	public static Mono<Void> logMessageInfo(String message) {
 		log.info(message);
-		logMessage(":information_source:", message);
+		return logMessage(":information_source:", message);
 	}
 	
-	public static void logMessageWarning(String message) {
+	public static Mono<Void> logMessageWarning(String message) {
 		log.warn(message);
-		logMessage(":warning:",message);
+		return logMessage(":warning:",message);
 	}
 	
-	public static void logMessageError(String prefix, Throwable error) {
+	public static Mono<Void> logMessageError(String prefix, Throwable error) {
 		String message = prefix + formatErrorMessage(error);
 		log.error(message);
-		logMessage(":no_entry:",message);
+		return logMessage(":no_entry:",message);
 	}
 	
 	public static void logWithoutMessage(String message) {
 		log.info(message);
 	}
 
-	public static void logHighPriorityMessage(String prefix, Throwable error) {
+	public static Mono<Void> logHighPriorityMessage(String prefix, Throwable error) {
 		String message = prefix + formatErrorMessage(error);
 		log.error(message);
 		// Prevents breaking the bot if the reference didn't init properly
 		if (logChannel != null)
-			logChannel.createMessage(userToPing.getMention() + " there is a critical issue.\n" + message).block();
+			return logChannel.createMessage(userToPing.getMention() + " there is a critical issue.\n" + message).then();
+		return Mono.empty();
 	}
 
 	public static String mentionCreator() {

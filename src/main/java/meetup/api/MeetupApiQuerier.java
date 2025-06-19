@@ -16,6 +16,7 @@ import org.apache.http.impl.client.HttpClients;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.util.EntityUtils;
 
+import com.fasterxml.jackson.core.TreeNode;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -30,7 +31,10 @@ public class MeetupApiQuerier {
 	private String clientSecret;
 	private String refreshToken;
 
-	private String queryString = "query($eventId: ID) { event(id: $eventId) { title description dateTime eventUrl tickets { edges { node { user { name id } } } } } }";
+	private String eventQueryString = "query($eventId: ID!) { event(id: $eventId) { id title description dateTime eventUrl maxTickets featuredEventPhoto{highResUrl} venues{name address city lat lon} rsvps(first:100, filter: {rsvpStatus:[YES, WAITLIST, NO]}) { waitlistCount yesCount noCount edges { node { status member { name id } } } } } }";
+	private String groupQueryString = "query { groupByUrlname(urlname: \"edinburgh-local-video-gamers\") { events(first:10) { edges { node { id } } } } }";
+
+	private String getMemberNameFromId = "query{ groupByUrlname(urlname: \"edinburgh-local-video-gamers\") { memberships(filter:{memberIds:[$memberId]}) { edges { node { id name memberPhoto {thumbUrl} } } } } }";
 
 	public MeetupApiQuerier() {
 		objectMapper = new ObjectMapper();
@@ -55,7 +59,7 @@ public class MeetupApiQuerier {
 			firstExc = e;
 			ChannelLogger.logMessageError("Unable to generate refresh token.", firstExc);
 		}
-		
+
 		// Try with Private Key
 		try {
 			JwtDTO token = getJwt();
@@ -65,11 +69,11 @@ public class MeetupApiQuerier {
 			secondExc = e;
 			ChannelLogger.logMessageError("Unable to generate JWT Token.", secondExc);
 		}
-		
+
 		ChannelLogger.logHighPriorityMessage("Unable to generate token with both methods", null);
 		return null;
 	}
-	
+
 	public MeetupApiResponse getEventDetails(JwtDTO token, String eventId) {
 		try {
 			String response = makeGraphQuery(token, eventId);
@@ -95,11 +99,11 @@ public class MeetupApiQuerier {
 		params.add(new BasicNameValuePair("assertion", signedJwt));
 
 		httpPost.setEntity(new UrlEncodedFormEntity(params));
-		
+
 		String content = execute(httpClient, httpPost);
-		JwtDTO jwt = objectMapper.readValue(content, JwtDTO.class); 
+		JwtDTO jwt = objectMapper.readValue(content, JwtDTO.class);
 		httpClient.close();
-		
+
 		return jwt;
 	}
 
@@ -114,32 +118,83 @@ public class MeetupApiQuerier {
 		params.add(new BasicNameValuePair("refresh_token", refreshToken));
 
 		httpPost.setEntity(new UrlEncodedFormEntity(params));
-		
+
 		String content = execute(httpClient, httpPost);
-		JwtDTO jwt = objectMapper.readValue(content, JwtDTO.class); 
+		JwtDTO jwt = objectMapper.readValue(content, JwtDTO.class);
 		httpClient.close();
-		
+
 		return jwt;
 	}
 
-	public String makeGraphQuery(JwtDTO token, String eventId) throws Exception {
-
+	public ArrayList<String> getUpcomingEvents(JwtDTO token) throws Exception {
 		CloseableHttpClient httpClient = HttpClients.createDefault();
-		HttpPost httpPost = new HttpPost("https://api.meetup.com/gql");
+		HttpPost httpPost = new HttpPost("https://api.meetup.com/gql-ext");
 		httpPost.addHeader("Authorization", "Bearer " + token.getAccessToken());
 		httpPost.addHeader("Content-Type", "application/json");
 
-		GraphRequestDTO request = new GraphRequestDTO(queryString, eventId);
+		EventGraphRequestDTO request = new EventGraphRequestDTO(groupQueryString, "");
 		String requestAsJson = objectMapper.writeValueAsString(request);
 		HttpEntity stringEntity = new StringEntity(requestAsJson, ContentType.APPLICATION_JSON);
 		httpPost.setEntity(stringEntity);
 
-		String content = execute(httpClient, httpPost); 
+		String content = execute(httpClient, httpPost);
 		httpClient.close();
-		
+
+		JsonNode root = objectMapper.readTree(content);
+
+		ArrayList<String> eventIds = new ArrayList<>();
+		TreeNode events = root.at("/data/groupByUrlname/events/edges");
+		for (int i = 0; i < events.size(); i++) {
+			eventIds.add(events.path(i).at("/node/id").toString().replaceAll("\"", ""));
+		}
+		return eventIds;
+	}
+
+	public String[] getNameAndImageOfUser(JwtDTO token, long id) {
+		CloseableHttpClient httpClient = HttpClients.createDefault();
+		try {
+			HttpPost httpPost = new HttpPost("https://api.meetup.com/gql-ext");
+			httpPost.addHeader("Authorization", "Bearer " + token.getAccessToken());
+			httpPost.addHeader("Content-Type", "application/json");
+
+			EventGraphRequestDTO request = new EventGraphRequestDTO(getMemberNameFromId.replace("$memberId", String.valueOf(id)));
+			String requestAsJson = objectMapper.writeValueAsString(request);
+			HttpEntity stringEntity = new StringEntity(requestAsJson, ContentType.APPLICATION_JSON);
+			httpPost.setEntity(stringEntity);
+
+			String content = execute(httpClient, httpPost);
+			httpClient.close();
+
+			JsonNode root = objectMapper.readTree(content);
+			String name = root.at("/data/groupByUrlname/memberships/edges").path(0).at("/node/name").toString()
+					.replaceAll("\"", "");
+			String image = root.at("/data/groupByUrlname/memberships/edges").path(0).at("/node/memberPhoto/thumbUrl").toString()
+					.replaceAll("\"", "");
+			return new String[] { name, image };
+		} catch (Exception e) {
+			e.printStackTrace();
+			return null;
+		}
+	}
+
+	public String makeGraphQuery(JwtDTO token, String variable) throws Exception {
+
+		CloseableHttpClient httpClient = HttpClients.createDefault();
+		HttpPost httpPost = new HttpPost("https://api.meetup.com/gql-ext");
+		httpPost.addHeader("Authorization", "Bearer " + token.getAccessToken());
+		httpPost.addHeader("Content-Type", "application/json");
+
+		EventGraphRequestDTO request = new EventGraphRequestDTO(eventQueryString, variable);
+		String requestAsJson = objectMapper.writeValueAsString(request);
+		HttpEntity stringEntity = new StringEntity(requestAsJson, ContentType.APPLICATION_JSON);
+		httpPost.setEntity(stringEntity);
+
+		String content = execute(httpClient, httpPost);
+		httpClient.close();
+
 		return content;
 	}
-	
+
 	private String execute(CloseableHttpClient client, HttpPost post) {
 		try {
 			CloseableHttpResponse response = client.execute(post);

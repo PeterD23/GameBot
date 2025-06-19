@@ -57,15 +57,14 @@ public class CallbackCommand implements ISlashCommand {
 
 	public CallbackCommand create() {
 		GatewayDiscordClient client = GameBot.gateway;
-		long applicationId = client.getRestClient().getApplicationId().block();
-
+		
 		ApplicationCommandRequest callbackRequest = ApplicationCommandRequest.builder().name(name)
 				.description(description).addAllOptions(options).build();
-
-		client.getRestClient().getApplicationService()
+		
+		client.getRestClient().getApplicationId().flatMap(applicationId -> client.getRestClient().getApplicationService()
 				.createGuildApplicationCommand(applicationId, guildId, callbackRequest)
-				.then(Mono.fromRunnable(
-						() -> ChannelLogger.logMessageInfo("Successfully registered admin command '" + name + "'")))
+				.then())
+				.onErrorResume(t -> ChannelLogger.logMessageError("Failed to register admin command '" + name + "'", t))
 				.subscribe();
 		return this;
 	}

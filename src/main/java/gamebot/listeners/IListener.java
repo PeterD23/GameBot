@@ -1,36 +1,42 @@
 package gamebot.listeners;
 
+import discord4j.core.event.domain.guild.GuildCreateEvent;
 import discord4j.core.event.domain.guild.MemberJoinEvent;
+import discord4j.core.event.domain.interaction.ButtonInteractionEvent;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.event.domain.interaction.ModalSubmitInteractionEvent;
-import discord4j.core.event.domain.lifecycle.ReadyEvent;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.event.domain.message.MessageUpdateEvent;
-import discord4j.core.event.domain.message.ReactionAddEvent;
-import discord4j.core.event.domain.message.ReactionRemoveEvent;
+import reactor.core.publisher.Mono;
 
 @SuppressWarnings("unused") // Defaults are optional implementations
 public interface IListener {
 
-	// On Ready and On Message are mandatory, others are optional
-	public void onReady(ReadyEvent event);
+	// On Ready is mandatory, others are optional
+	public Mono<?> onReady(GuildCreateEvent event);
 	
-	public void onMessage(MessageCreateEvent event);
+	default public Mono<?> onMessage(MessageCreateEvent event){
+		return Mono.empty();
+	}
 		
-	default public void onEdit(MessageUpdateEvent event) {
-		return;
+	default public Mono<?> onEdit(MessageUpdateEvent event) {
+		return Mono.empty();
 	}
 	
-	default public void onMemberJoin(MemberJoinEvent event) {
-		return;
+	default public Mono<?> onMemberJoin(MemberJoinEvent event) {
+		return Mono.empty();
 	};
 	
-	default public void onCommand(ChatInputInteractionEvent event) {
-		return;
+	default public Mono<?> onCommand(ChatInputInteractionEvent event) {
+		return Mono.empty();
 	};
 	
-	default public void onCommand(ModalSubmitInteractionEvent event) {
-		return;
-	};
+	default public Mono<?> onCommand(ModalSubmitInteractionEvent event) {
+		return Mono.empty();
+	}
+
+	default public Mono<?> onCommand(ButtonInteractionEvent event) {
+		return Mono.empty();
+	}
 	
 }

@@ -6,7 +6,7 @@ import java.util.ArrayList;
 
 import discord4j.common.util.Snowflake;
 import discord4j.core.GatewayDiscordClient;
-import discord4j.core.event.domain.lifecycle.ReadyEvent;
+import discord4j.core.event.domain.guild.GuildCreateEvent;
 import discord4j.core.object.component.TopLevelMessageComponent;
 import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.GuildEmoji;
@@ -34,25 +34,31 @@ public class CoreHelpers {
 	protected long ADMIN_ROLE = 731604497435983992L;
 
 	private GatewayDiscordClient cli;
+	private Guild guild;
 
 	protected PermissionSet readSend = PermissionSet.of(Permission.VIEW_CHANNEL, Permission.SEND_MESSAGES,
 			Permission.READ_MESSAGE_HISTORY);
 
-	protected void init(ReadyEvent event) {
+	protected Mono<Void> init(GuildCreateEvent event) {
+		guild = event.getGuild();
 		cli = event.getClient();
-		cli.edit().withUsername("Game Bot").block();
+		return cli.edit().withUsername("Game Bot").then();
 	}
 	
-	protected String mentionMe() {
-		return getUserIfMentionable(97036843924598784L);
+	protected static String mentionMe() {
+		return "<@97036843924598784>";
 	}
 
-	protected String getEveryoneMention() {
-		return getGuild().getEveryoneRole().block().getMention();
+	protected static String getEveryoneMention() {
+		return "@everyone";
+	}
+	
+	protected static String getUserMention(long id) {
+		return "<@"+id+">";
 	}
 	
 	protected Guild getGuild() {
-		return cli.getGuildById(Snowflake.of(SERVER)).block();
+		return guild;
 	}
 
 	protected GuildEmoji getEmojiByName(String name) {
@@ -73,9 +79,8 @@ public class CoreHelpers {
 		return mentions;
 	}
 	
-	protected boolean mentionedBot(String message) {
-		String bot = getUserById(BOT_ID).getMention();
-		return message.replaceAll("!", "").contains(bot);
+	protected Mono<Boolean> mentionedBot(String message) {
+		return getUserById(BOT_ID).map(bot -> message.contains(bot.getMention()));
 	}
 	
 	protected boolean isAdmin(Member usr) {
@@ -84,96 +89,76 @@ public class CoreHelpers {
 		return usr.getRoleIds().stream().anyMatch(p -> p.asLong() == ADMIN_ROLE);
 	}
 
-	protected Role getRoleById(long id) {
-		return getGuild().getRoleById(Snowflake.of(id)).block();
+	protected Mono<Member> getUserById(long id) {
+		return getGuild().getMemberById(Snowflake.of(id));
 	}
 
-	protected Member getUserById(long id) {
-		return getGuild().getMemberById(Snowflake.of(id)).block();
-	}
-	
-	protected String getUserIfMentionable(long id) {
-		Member member = getUserById(id);
-		return member != null ? member.getMention() : "";
-	}
-
-	protected Member convertUserToMember(long id) {
-		return cli.getUserById(Snowflake.of(id)).block().asMember(Snowflake.of(SERVER)).block();
-	}
-
-	protected void editMessage(long channelId, String messageId, String newMessage) {
-		getChannel(channelId).getMessageById(Snowflake.of(messageId)).block().edit().withContentOrNull(newMessage).block();
+	protected Mono<Void> editMessage(long channelId, long messageId, String newMessage) {
 		ChannelLogger.logMessageInfo("Editing message ID " + messageId + " with String of length " + newMessage.length());
+		return getMessage(channelId, messageId).flatMap(message -> message.edit().withContentOrNull(newMessage)).then();
 	}
 
-	protected void deleteMessage(long channelId, String messageId, String reason) {
-		getChannel(channelId).getMessageById(Snowflake.of(messageId)).doOnSuccess(message -> message.delete(reason)).block();
+	protected Mono<Void> deleteMessage(long channelId, long messageId, String reason) {
 		ChannelLogger.logMessageInfo("Deleting message ID " + messageId + " with reason "+reason);
+		return getMessage(channelId, messageId).flatMap(message -> message.delete(reason)).then();
 	}
 
 	protected Mono<Message> sendMessage(long channelId, String content) {
 		ChannelLogger.logMessageInfo("Creating message to send to Channel " + channelId + " with content '"+content+"'");
-		return getChannel(channelId).createMessage(content);
+		return getChannel(channelId).flatMap(channel -> channel.createMessage(content));
 	}
 	
 	protected Mono<Void> sendReply(Message message, String content) {
-		return getChannel(message.getChannelId().asLong())
-				.createMessage(content).withMessageReferenceId(message.getId()).then();
+		return getChannel(message.getChannelId().asLong()).flatMap(channel ->
+				channel.createMessage(content).withMessageReferenceId(message.getId())).then();
 	}
 	
-	protected Mono<Message> sendMessage(long channelId, String content, TopLevelMessageComponent... components) {
-		return getChannel(channelId).createMessage(content).withComponents(components);
+	protected Mono<Message> sendMessage(long channelId, ArrayList<TopLevelMessageComponent> components) {
+		return getChannel(channelId).flatMap(channel -> channel.createMessage().withComponents(components));
 	}
 	
-	protected Mono<Void> pinMessage(long channelId, Snowflake messageId){
-		return getChannel(channelId).getMessageById(messageId).doOnSuccess(message -> message.pin()).then();
+	protected Mono<Void> editMessage(long channelId, long messageId, ArrayList<TopLevelMessageComponent> components) {
+		int length = components.stream().mapToInt(component -> Utils.recursiveLength(component.getData())).sum();
+		ChannelLogger.logMessageInfo("Editing message ID " + messageId + " with String of length " + length);
+		return getMessage(channelId, messageId).flatMap(message -> message.edit().withComponentsOrNull(components).then());
 	}
-
-	protected String embedImage(long channelId, String imageName) {
+	
+	protected Mono<Message> embedImage(long channelId, String imageName) {
 		char ps = File.separatorChar;
 		String filePath = System.getProperty("user.home") + ps + "Pictures" + ps + imageName;
 		ChannelLogger.logMessageInfo("Looking for " + filePath);
 		try (FileInputStream fs = new FileInputStream(filePath)) {
-			String messageId = getChannel(channelId).createMessage(MessageCreateSpec.builder()
-					.addFile(imageName, fs).build())
-					.block()
-					.getId()
-					.asString();
-			fs.close();
-			return messageId;
+			return getChannel(channelId)
+					.flatMap(channel -> { 
+						return channel.createMessage(MessageCreateSpec.builder()
+								.addFile(imageName, fs)
+								.build()
+								);
+					});
 		} catch (Exception e) {
 			ChannelLogger.logMessageError("Image acquisition failure: ", e);
-			return sendMessage(channelId, "Couldn't find that image, sorry :(").block().getId().asString();
+			return sendMessage(channelId, "Couldn't find that image, sorry :(");
 		}
 	}
 
-	protected Message getMessage(long channelId, long messageId) {
-		return getChannel(channelId).getMessageById(Snowflake.of(messageId)).block();
+	protected Mono<Message> getMessage(long channelId, long messageId) {
+		return getChannel(channelId).flatMap(channel -> channel.getMessageById(Snowflake.of(messageId)));
 	}
 	
-	protected TextChannel getChannel(long id) {
-		return (TextChannel) getGuild().getChannelById(Snowflake.of(id)).block();
+	protected Mono<TextChannel> getChannel(long id) {
+		return getGuild().getChannelById(Snowflake.of(id)).ofType(TextChannel.class);
 	}
 
-	protected void deleteChannel(String channelName) {
-		TextChannel channel = (TextChannel) getGuild().getChannels().filter(p -> p.getName().equals(channelName)).next()
-				.block();
-		channel.delete("Deleted by bot request").block();
+	protected Mono<Role> createRole(String name) {
+		return getGuild().createRole(RoleCreateSpec.create().withColor(Utils.randomColor()).withName(name).withPermissions(readSend));
 	}
 
-	protected Role createRole(String name) {
-		Guild guild = getGuild();
-		return guild.createRole(RoleCreateSpec.create().withColor(Utils.randomColor()).withName(name).withPermissions(readSend)).block();
+	protected Mono<Void> deleteRole(long id) {
+		return getGuild().getRoleById(Snowflake.of(id)).flatMap(role -> role.delete("Bot request to remove")).then();
 	}
 
-	protected void deleteRole(long id) {
-		Role r = getGuild().getRoleById(Snowflake.of(id)).block();
-		r.delete("Bot request to remove").block();
-	}
-
-	protected boolean hasRole(Member member, long roleId) {
-		Snowflake id = getRoleById(roleId).getId();
-		return member.getRoleIds().contains(id);
+	protected static boolean hasRole(Member member, long roleId) {
+		return member.getRoleIds().contains(Snowflake.of(roleId));
 	}
 
 }

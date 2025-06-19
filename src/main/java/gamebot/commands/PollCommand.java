@@ -10,7 +10,7 @@ import discord4j.core.event.domain.interaction.ModalSubmitInteractionEvent;
 import discord4j.core.object.command.ApplicationCommandOption;
 import discord4j.core.object.component.ActionRow;
 import discord4j.core.object.component.TextInput;
-import discord4j.core.object.entity.poll.Poll;
+import discord4j.core.object.entity.channel.MessageChannel;
 import discord4j.core.object.entity.poll.PollAnswer;
 import discord4j.core.spec.InteractionPresentModalSpec;
 import discord4j.core.spec.PollCreateSpec;
@@ -38,16 +38,8 @@ public class PollCommand implements ISlashCommand {
 		return "**/poll** Create a Discord poll. **expiry** is required from a dropdown list of options"; 
 	}
 
+	// Non-blocking solution
 	public PollCommand() {
-		GatewayDiscordClient client = GameBot.gateway;
-		long applicationId = client.getRestClient().getApplicationId().block();
-		pollWatcherMention = client.getGuildById(Snowflake.of(guildId)).block()
-				.getRoles()
-				.filter(p -> p.getId().asLong() == POLL_WATCHER)
-				.next()
-				.block()
-				.getMention();
-		
 		ArrayList<ApplicationCommandOptionChoiceData> choices = new ArrayList<>();
 		choices.add(ApplicationCommandOptionChoiceData.builder().name("12 hours").value(12).build());
 		choices.add(ApplicationCommandOptionChoiceData.builder().name("1 day").value(24).build());
@@ -60,9 +52,17 @@ public class PollCommand implements ISlashCommand {
 				.addOption(ApplicationCommandOptionData.builder().name("expiry").description("How many hours should the poll last?")
 						.type(ApplicationCommandOption.Type.INTEGER.getValue()).required(true).choices(choices).build())
 				.build();
-
-		client.getRestClient().getApplicationService()
-				.createGuildApplicationCommand(applicationId, guildId, pollRequest).subscribe();
+		
+		GatewayDiscordClient client = GameBot.gateway;
+		client.getGuildById(Snowflake.of(guildId))
+		.flatMap(guild -> guild.getRoles()
+				.filter(p -> p.getId().asLong() == POLL_WATCHER)
+				.next()
+				.flatMap(role -> Mono.fromRunnable(() -> pollWatcherMention = role.getMention()))
+				.then())
+		.then(client.getRestClient().getApplicationId())
+		.flatMap(id -> client.getRestClient().getApplicationService().createGuildApplicationCommand(id, guildId, pollRequest))
+		.subscribe();
 	}
 
 	@Override
@@ -95,8 +95,10 @@ public class PollCommand implements ISlashCommand {
 		}
 		int expiry = components.get(1).getId();	
 		PollCreateSpec pollCreateSpec = PollCreateSpec.builder().question(question).allowMultiselect(true).addAllAnswers(answers).duration(expiry).build();
-		event.reply("Question time, folks... "+pollWatcherMention).block();
-		Poll poll = event.getInteraction().getChannel().block().createPoll(pollCreateSpec).block();
-		return event.getInteraction().getChannel().block().getMessageById(poll.getId()).block().pin();
+		Mono<MessageChannel> channel = event.getInteraction().getChannel();
+		return event.reply("Question time, folks... "+pollWatcherMention)
+				.then(channel.flatMap(chn -> chn.createPoll(pollCreateSpec)))
+				.flatMap(poll -> channel.flatMap(chnb -> chnb.getMessageById(poll.getId())))
+				.flatMap(msg -> msg.pin());
 	}
 }
