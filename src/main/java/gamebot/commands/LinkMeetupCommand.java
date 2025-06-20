@@ -47,14 +47,15 @@ public class LinkMeetupCommand implements ISlashCommand {
 	}
 	
 	public LinkMeetupCommand() {
-		GatewayDiscordClient client = GameBot.gateway;
-		long applicationId = client.getRestClient().getApplicationId().block();
-
 		ApplicationCommandRequest linkMeetupRequest = ApplicationCommandRequest.builder().name("link-meetup")
 				.description("Ask the bot to link your Discord to your Meetup account.!").build();
-
-		client.getRestClient().getApplicationService()
-				.createGuildApplicationCommand(applicationId, guildId, linkMeetupRequest).subscribe();
+		
+		GatewayDiscordClient client = GameBot.gateway;
+		client.getRestClient().getApplicationId()
+			.flatMap(applicationId -> 
+				client.getRestClient().getApplicationService()
+					.createGuildApplicationCommand(applicationId, guildId, linkMeetupRequest))
+			.subscribe();
 	}
 
 	private List<TopLevelMessageComponent> constructMessage(String code, String message, Color color) {
@@ -118,23 +119,4 @@ public class LinkMeetupCommand implements ISlashCommand {
 		}
 		return Mono.empty();
 	}
-	
-	/** THE OLD BAD WAY
-	 * return event.deferEdit().then(Mono.fromRunnable(() -> {
-				ChannelLogger.logMessageInfo("Generating a new button listener for Link-Meetup");
-				long meetupId = SeleniumDriver.getInstance().checkCode(code);
-				if (meetupId == 0L) {
-					throw new RuntimeException();
-				}
-				member.addRole(Snowflake.of(MEETUP_VERIFIED)).block();
-				MeetupLinker.linkUserToMeetup(userId, meetupId);
-			})).then(event.deleteReply())
-				.then(event.getInteraction()
-						.getChannel().block()
-						.createMessage("Congrats "+member.getMention()+", you're officially Meetup Verified™! Have a role for your efforts!"))
-				.onErrorResume(err -> {
-					ChannelLogger.logMessageError("Failed to verify Meetup ID:", err);
-					return event.editReply().withComponentsOrNull(constructMessage(code, "Something went wrong. I wasn't able to get your Meetup ID.", Color.RED));
-				}).then();
-	 */
 }

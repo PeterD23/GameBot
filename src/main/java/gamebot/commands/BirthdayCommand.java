@@ -29,15 +29,16 @@ public class BirthdayCommand implements ISlashCommand {
 	}
 
 	public BirthdayCommand() {
-		GatewayDiscordClient client = GameBot.gateway;
-		long applicationId = client.getRestClient().getApplicationId().block();
-		
 		ApplicationCommandRequest birthdayRequest = ApplicationCommandRequest.builder().name("birthday")
 				.description("Tell me its your birthday today!")
 				.build();
-
-		client.getRestClient().getApplicationService()
-				.createGuildApplicationCommand(applicationId, guildId, birthdayRequest).subscribe();
+		
+		GatewayDiscordClient client = GameBot.gateway;
+		client.getRestClient().getApplicationId()
+			.flatMap(applicationId -> 
+				client.getRestClient().getApplicationService()
+					.createGuildApplicationCommand(applicationId, guildId, birthdayRequest))
+			.subscribe();
 	}
 
 	@Override

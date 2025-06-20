@@ -47,10 +47,6 @@ public class MeetupLinker {
 		}
 	}
 	
-	public static HashMap<Long, Long> getVerifiedUsers(){
-		return verified;
-	}
-	
 	public static boolean queueUser(long userId, String code) {
 		// The white zone is for the boxing and unboxing of longs only
 		// Listen, Betty, dont start up with your white zone shit again 

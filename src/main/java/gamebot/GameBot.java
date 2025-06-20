@@ -63,10 +63,8 @@ public class GameBot {
 			Function<E, Publisher<T>> function, Duration timeout) {
 		String callerMethod = Thread.currentThread().getStackTrace()[2].getMethodName();
 		ChannelLogger.logMessageInfo("Creating new temp listener for " + event.getTypeName() + " from " + callerMethod);
-		gateway.on(event, function).timeout(timeout).onErrorResume(TimeoutException.class, ignore -> {
-			ChannelLogger.logMessageWarning("Timeout: " + event.getTypeName() + " from " + callerMethod);
-			return Mono.empty();
-		}).then().subscribe();
+		gateway.on(event, function).timeout(timeout).then().onErrorResume(TimeoutException.class,
+			ignore -> ChannelLogger.logMessageWarning("Timeout: " + event.getTypeName() + " from " + callerMethod));
 	}
 
 	// Mono.when() is used on Flux.fromIterable because listeners is a list of two
@@ -83,31 +81,27 @@ public class GameBot {
 
 	private Flux<?> buildMemberJoinEvent() {
 		return gateway.on(MemberJoinEvent.class,
-				event -> Mono.when(Flux.fromIterable(listeners).flatMap(element -> element.onMemberJoin(event)))
-						.onErrorResume(t -> Mono.empty()));
+				event -> Mono.when(Flux.fromIterable(listeners).flatMap(element -> element.onMemberJoin(event))))
+						.onErrorResume(t -> ChannelLogger.logHighPriorityMessage("MemberJoinEvent error occurred.", t));
 	}
 
 	private Flux<?> buildMessageCreateEvent() {
 		return gateway
-				.on(MessageCreateEvent.class,
-						event -> Mono.when(Flux.fromIterable(listeners).flatMap(element -> element.onMessage(event))))
-				.onErrorResume(t -> {
-					ChannelLogger.logHighPriorityMessage("MessageCreateEvent error occurred.", t);
-					return Mono.empty();
-				});
+			.on(MessageCreateEvent.class,
+				event -> Mono.when(Flux.fromIterable(listeners).flatMap(element -> element.onMessage(event))))
+					.onErrorResume(t -> ChannelLogger.logHighPriorityMessage("MessageCreateEvent error occurred.", t));
 	}
 
 	private Flux<?> buildMessageUpdateEvent() {
 		return gateway
 				.on(MessageUpdateEvent.class,
 						event -> Mono.when(Flux.fromIterable(listeners).flatMap(element -> element.onEdit(event))))
-				.onErrorResume(t -> Mono.empty());
+				.onErrorResume(t -> ChannelLogger.logHighPriorityMessage("MessageUpdateEvent error occurred.", t));
 	}
 
 	private Mono<?> buildChatInputInteractionEvent() {
-		return Mono
-				.when(gateway
-						.on(ChatInputInteractionEvent.class,
+		return Mono.when(
+				gateway.on(ChatInputInteractionEvent.class,
 								event -> Mono.when(
 										Flux.fromIterable(listeners).flatMap(element -> element.onCommand(event))))
 						.onErrorResume(t -> ChannelLogger.logMessageError("ChatInputInteractionEvent threw an error:", t)), 

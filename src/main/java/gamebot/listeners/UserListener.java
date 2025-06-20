@@ -138,9 +138,9 @@ public class UserListener extends CoreHelpers implements IListener {
 		TextDisplay text = TextDisplay.of(
 				"Hi! I'm Game Bot, and I help out managing peoples roles on the server!\n My inner workings were initially created by"
 						+ mentionMe() + "! However, I'm also supported by these lovely people:\n"
-						+ mentionUsersWithRole(933380677892730880L)
+						+ "$mono" 
 						+ "So, if at any point I stop working, please give any of them a kick!");
-		return new BasicCommand("about", "Who is Game Bot?", text);
+		return new BasicCommand("about", "Who is Game Bot?", text).withMono(mentionUsersWithRole(933380677892730880L));
 	}
 
 	private BasicCommand hello() {

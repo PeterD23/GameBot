@@ -46,9 +46,6 @@ public class ReadCommand implements ISlashCommand {
 	}
 
 	public ReadCommand() {
-		GatewayDiscordClient client = GameBot.gateway;
-		long applicationId = client.getRestClient().getApplicationId().block();
-
 		ApplicationCommandRequest readRequest = ApplicationCommandRequest.builder().name("read")
 				.description("Read contents for a file")
 				.addOption(ApplicationCommandOptionData.builder().name("filename").description("File name to read")
@@ -56,9 +53,13 @@ public class ReadCommand implements ISlashCommand {
 				.addOption(ApplicationCommandOptionData.builder().name("cc_channel").description("CC to this channel")
 						.type(ApplicationCommandOption.Type.CHANNEL.getValue()).required(false).build())
 				.build();
-
-		client.getRestClient().getApplicationService()
-				.createGuildApplicationCommand(applicationId, guildId, readRequest).subscribe();
+		
+		GatewayDiscordClient client = GameBot.gateway;
+		client.getRestClient().getApplicationId()
+			.flatMap(applicationId -> 
+				client.getRestClient().getApplicationService()
+					.createGuildApplicationCommand(applicationId, guildId, readRequest))
+			.subscribe();
 	}
 
 	@Override

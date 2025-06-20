@@ -53,10 +53,6 @@ public class ChannelLogger {
 		return logMessage(":no_entry:",message);
 	}
 	
-	public static void logWithoutMessage(String message) {
-		log.info(message);
-	}
-
 	public static Mono<Void> logHighPriorityMessage(String prefix, Throwable error) {
 		String message = prefix + formatErrorMessage(error);
 		log.error(message);
@@ -64,10 +60,6 @@ public class ChannelLogger {
 		if (logChannel != null)
 			return logChannel.createMessage(userToPing.getMention() + " there is a critical issue.\n" + message).then();
 		return Mono.empty();
-	}
-
-	public static String mentionCreator() {
-		return userToPing.getMention();
 	}
 
 	private static String formatErrorMessage(Throwable throwable) {

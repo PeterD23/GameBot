@@ -6,11 +6,10 @@ import java.util.concurrent.TimeoutException;
 import discord4j.common.util.Snowflake;
 import discord4j.core.GatewayDiscordClient;
 import discord4j.core.event.domain.interaction.ButtonInteractionEvent;
-import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;	
+import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.object.component.ActionRow;
 import discord4j.core.object.component.Button;
 import discord4j.core.object.entity.Member;
-import discord4j.core.object.entity.Role;
 import discord4j.discordjson.json.ApplicationCommandRequest;
 import gamebot.GameBot;
 import reactor.core.publisher.Mono;
@@ -33,25 +32,20 @@ public class WatchCommand implements ISlashCommand {
 		return "**/watch** Shows two buttons allowing you to subscribe or unsubscribe from Event and Poll pings."; 
 	}
 
-	private Role getRoleById(long id) {
-		return GameBot.gateway.getGuildById(Snowflake.of(guildId)).block().getRoles()
-				.filter(p -> p.getId().asLong() == id).next().block();
-	}
-
 	private boolean hasRole(Member member, long roleId) {
-		Snowflake id = getRoleById(roleId).getId();
-		return member.getRoleIds().contains(id);
+		return member.getRoleIds().contains(Snowflake.of(roleId));
 	}
 
 	public WatchCommand() {
-		GatewayDiscordClient client = GameBot.gateway;
-		long applicationId = client.getRestClient().getApplicationId().block();
-
 		ApplicationCommandRequest watchRequest = ApplicationCommandRequest.builder().name("watch")
 				.description("Watch for polls or events").build();
-
-		client.getRestClient().getApplicationService()
-				.createGuildApplicationCommand(applicationId, guildId, watchRequest).subscribe();
+		
+		GatewayDiscordClient client = GameBot.gateway;
+		client.getRestClient().getApplicationId()
+			.flatMap(applicationId -> 
+				client.getRestClient().getApplicationService()
+					.createGuildApplicationCommand(applicationId, guildId, watchRequest))
+			.subscribe();
 	}
 
 	@Override
@@ -98,12 +92,18 @@ public class WatchCommand implements ISlashCommand {
 		long roleId = data.equals("poll-button") ? POLL_WATCHER : EVENT_WATCHER;
 
 		if (!hasRole(member, roleId)) {
-			member.addRole(getRoleById(roleId).getId(), "Requested by user").block();
-			return event.edit("Hey, you will now be pinged whenever a new " + watch + " is created!")
-						.withComponents(ActionRow.of(generatePollButton(member, roleId, true), generateEventButton(member, roleId, true)));
-		}
-		member.removeRole(getRoleById(roleId).getId(), "Requested by user").block();
-		return event.edit("Hey, you will no longer be pinged whenever a new " + watch + " is created!")
-						.withComponents(ActionRow.of(generatePollButton(member, roleId, false), generateEventButton(member, roleId, false)));
+			return event.deferEdit()
+					.then(member.addRole(Snowflake.of(roleId), "Requested by user"))
+					.then(event.editReply("Hey, you will now be pinged whenever a new " + watch + " is created!")
+						.withComponents(ActionRow.of(generatePollButton(member, roleId, true),
+								generateEventButton(member, roleId, true))))
+					.then();
+		}	
+		return event.deferEdit()
+				.then(member.removeRole(Snowflake.of(roleId), "Requested by user"))
+				.then(event.editReply("Hey, you will no longer be pinged whenever a new " + watch + " is created!")
+						.withComponents(ActionRow.of(generatePollButton(member, roleId, false),
+								generateEventButton(member, roleId, false))))
+				.then();
 	}
 }

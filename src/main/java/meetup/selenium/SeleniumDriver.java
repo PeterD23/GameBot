@@ -146,28 +146,6 @@ public class SeleniumDriver {
 		}
 		return meetupId;
 	}
-
-	public ArrayList<Pair<String, String>> collateAttendees(String eventId) {
-		String attendeeList = "//main//div[@class='mt-6 ']/div/div[@class='flex']";
-		lock();
-		try {
-			ArrayList<Pair<String, String>> attendeePair = new ArrayList<>();
-			webDriver.get(meetupUrl + eventId + "/attendees/");
-			int attendees = Elements(attendeeList).size();
-			for (int i = 1; i <= attendees; i++) {
-				String name = TextOf(attendeeList + "[" + i + "]//preceding-sibling::span");
-				String link = extractIdFromMeetupUrl(getAttendeeId(attendeeList + "[" + i + "]//button"));
-				log.info("Extracted: " + name + ", " + link);
-				attendeePair.add(new Pair<>(name, link));
-			}
-			return attendeePair;
-		} catch (Exception e) {
-			ChannelLogger.logHighPriorityMessage("Failed to collate attendee list.", e);
-			return new ArrayList<>();
-		} finally {
-			unlock();
-		}
-	}
 	
 	public ArrayList<MeetupEvent> returnEventData() {
 		lock();
@@ -218,28 +196,6 @@ public class SeleniumDriver {
 		} catch (Exception e) {
 			ChannelLogger.logMessageError(reason + ": Could not find element", e);
 			return false;
-		}
-	}
-
-	private String getAttendeeId(String link) {
-		// Open new tab and enable full list
-		ClickElement("//div[@data-testid='attendees-tab-container']/button[2]");
-		ClickElement("//div[@data-testid='attendees-tab-container']/button[1]");		
-		try {
-			ClickElement(link);
-			// Wait for page to load
-			Thread.sleep(200);
-
-			// Get tabs and switch between them
-			ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());
-			webDriver.switchTo().window(tabs.get(1));
-			String id = extractIdFromMeetupUrl(webDriver.getCurrentUrl());
-			webDriver.close();
-			webDriver.switchTo().window(tabs.get(0));
-			Thread.sleep(100);
-			return id;
-		} catch (Exception e) {
-			return "Attendee";
 		}
 	}
 

@@ -22,12 +22,12 @@ import discord4j.core.object.component.Separator;
 import discord4j.core.object.component.TextDisplay;
 import discord4j.core.object.entity.GuildEmoji;
 import discord4j.core.object.entity.Member;
-import discord4j.core.object.entity.Role;
 import discord4j.core.object.reaction.ReactionEmoji;
 import discord4j.discordjson.json.ApplicationCommandRequest;
 import gamebot.ChannelLogger;
 import gamebot.GameBot;
 import meetup.selenium.Tuple;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public class SubscribeCommand implements ISlashCommand {
@@ -47,13 +47,21 @@ public class SubscribeCommand implements ISlashCommand {
 		return "**/subscribe** Bring up a multi-select menu for choosing game genres to subscribe to."; 
 	}
 	
-	protected GuildEmoji getEmojiByName(String name) {
-		return GameBot.gateway.getGuildById(Snowflake.of(guildId)).block().getEmojis().filter(p -> p.getName().equals(name)).next().block();
+	private Mono<GuildEmoji> getEmojiByName(String name) {
+		return GameBot.gateway
+				.getGuildById(Snowflake.of(guildId))
+				.flatMap(guild -> guild.getEmojis()
+					.filter(p -> p.getName().equals(name))
+					.next());
 	}
 
-	private Role getRoleById(long id) {
-		return GameBot.gateway.getGuildById(Snowflake.of(guildId)).block().getRoles()
-				.filter(p -> p.getId().asLong() == id).next().block();
+	private Mono<String> getRoleName(long id) {
+		return GameBot.gateway
+				.getGuildById(Snowflake.of(guildId))
+				.flatMap(guild -> guild.getRoles()
+					.filter(p -> p.getId().asLong() == id)
+					.next()
+					.map(role -> role.getName()));
 	}
 
 	private boolean hasRole(Member member, long roleId) {
@@ -61,42 +69,58 @@ public class SubscribeCommand implements ISlashCommand {
 		return member.getRoleIds().contains(id);
 	}
 	
-	public void readDataIntoTuple(String fileName) {
+	public Mono<Void> readDataIntoTuple(String fileName) {
 		genreRoles.clear();
 		try {
 			List<String> lines = FileUtils.readLines(new File(fileName), Charset.defaultCharset());
-			for (String line : lines) {
+			return Mono.when(Flux.fromIterable(lines).flatMap(line -> {
 				String[] data = line.split(" ");
-				genreRoles.add(new Tuple<>(data[0], new Long(data[1]), getRoleById(new Long(data[1])).getName()));
-			}
+				return getRoleName(new Long(data[1]))
+						.flatMap(roleName -> Mono.fromRunnable(() -> genreRoles.add(new Tuple<>(data[0], new Long(data[1]), roleName)))); 
+			}));
 		} catch (IOException e) {
-			ChannelLogger.logMessageError("Failed to read genres file:", e);
+			return ChannelLogger.logMessageError("Failed to read genres file:", e);
 		}
 	}
 	
-	private SelectMenu constructRoleMenu(Member member) {	
-		List<SelectMenu.Option> roles = genreRoles.stream()
-				.map(tup -> {
-					ReactionEmoji emoji = ReactionEmoji.custom(getEmojiByName(tup.first()));
-					return SelectMenu.Option
-							.of(tup.third(), tup.second().toString())
-							.withEmoji(emoji)
-							.withDefault(hasRole(member, tup.second()));
-				})
-				.collect(Collectors.toList());
-		return SelectMenu.of("role-menu", roles).withMinValues(0).withMaxValues(roles.size());
+	private Mono<Void> addOrRemoveRole(List<Long> values, Member member, long role){
+		if(values.contains(role) && !hasRole(member, role))
+			return member.addRole(Snowflake.of(role));
+		else if(!values.contains(role) && hasRole(member, role))
+			return member.removeRole(Snowflake.of(role));
+		return Mono.empty();
+	}
+	
+	private Mono<SelectMenu> constructRoleMenu(Member member) {
+		ArrayList<SelectMenu.Option> roles = new ArrayList<>();
+		return Mono.when(
+				Flux.fromIterable(genreRoles)
+					.flatMap(tup -> getEmojiByName(tup.first())
+						.flatMap(emoji -> Mono.fromRunnable(
+								() -> roles.add(SelectMenu.Option.of(tup.third(), tup.second().toString())
+								.withEmoji(ReactionEmoji.custom(emoji))
+								.withDefault(hasRole(member, tup.second())))
+							)
+						)
+					)
+				)
+				.then(Mono.fromCallable(() -> SelectMenu.of("role-menu", roles)
+					.withMinValues(0)
+					.withMaxValues(roles.size())));
 	}	
 
 	public SubscribeCommand() {
-		GatewayDiscordClient client = GameBot.gateway;
-		long applicationId = client.getRestClient().getApplicationId().block();
-
 		ApplicationCommandRequest subscribeRequest = ApplicationCommandRequest.builder().name("subscribe")
 				.description("Subscribe to genre channels").build();
-
-		client.getRestClient().getApplicationService()
-				.createGuildApplicationCommand(applicationId, guildId, subscribeRequest).subscribe();
-		readDataIntoTuple("genres");
+		
+		GatewayDiscordClient client = GameBot.gateway;
+		client.getRestClient()
+		.getApplicationId()
+		.flatMap(applicationId -> client.getRestClient()
+			.getApplicationService()
+			.createGuildApplicationCommand(applicationId, guildId, subscribeRequest))	
+		.then(readDataIntoTuple("genres"))
+		.subscribe();
 	}
 
 	@Override
@@ -105,29 +129,31 @@ public class SubscribeCommand implements ISlashCommand {
 		GameBot.gateway.on(SelectMenuInteractionEvent.class, select -> onSelectInteraction(select)).timeout(Duration.ofMinutes(5))
 				.onErrorResume(TimeoutException.class, ignore -> Mono.empty()).then().subscribe();
 		
-		return event.reply()
-				.withComponents(
-						Container.of(
-								TextDisplay.of("Select which genres you're interested in!"),
-								Separator.of(),
-								ActionRow.of(constructRoleMenu(member))
-						))
-				.withEphemeral(true);
+		return event.deferReply()
+				.withEphemeral(true)
+				.then(constructRoleMenu(member)
+						.flatMap(roleMenu -> 
+							event.editReply()
+								.withComponents(
+									Container.of(
+										TextDisplay.of("Select which genres you're interested in!"),
+										Separator.of(),
+										ActionRow.of(roleMenu)
+									))))
+				.then();
 	}
 
 	public Mono<Void> onSelectInteraction(SelectMenuInteractionEvent event) {
 		Member member = event.getInteraction().getMember().get();
 		List<Long> values = event.getValues().stream().map(m -> Long.parseLong(m)).collect(Collectors.toList());
+		List<Long> genres = genreRoles.stream().map(roles -> roles.second()).collect(Collectors.toList());
 		
-		return event.deferEdit().then(Mono.fromRunnable(() -> {
-			genreRoles.stream().map(roles -> roles.second()).collect(Collectors.toList()).forEach(role -> {
-				if(values.contains(role) && !hasRole(member, role)) {
-					member.addRole(Snowflake.of(role)).block();
-				} else if(!values.contains(role) && hasRole(member, role)) {
-					member.removeRole(Snowflake.of(role)).block();
-				}
-			});
-		}).then(event.editReply()
-				.withComponents(TextDisplay.of("# Thank you for your submission!")))).then();
+		return event.deferEdit()
+				.then(Mono.when
+					(Flux.fromIterable(genres)
+						.flatMap(role -> addOrRemoveRole(values, member, role)))
+					.then(event.editReply()
+				.withComponents(TextDisplay.of("# Thank you for your submission!"))))
+				.then();
 	}
 }

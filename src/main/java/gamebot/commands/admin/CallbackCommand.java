@@ -2,6 +2,7 @@ package gamebot.commands.admin;
 
 import java.util.ArrayList;
 
+import discord4j.common.util.Snowflake;
 import discord4j.core.GatewayDiscordClient;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.object.command.ApplicationCommandOption;
@@ -28,7 +29,7 @@ public class CallbackCommand implements ISlashCommand {
 	protected boolean isAdmin(Member usr, ChatInputInteractionEvent event) {
 		if (Utils.adminsDenied() && !event.getCommandName().equals("deny"))
 			return false;
-		return usr.getRoles().any(p -> p.getId().asLong() == ADMIN_ROLE).block().booleanValue();
+		return usr.getRoleIds().contains(Snowflake.of(ADMIN_ROLE));
 	}
 
 	public CallbackCommand(String name, String description) {

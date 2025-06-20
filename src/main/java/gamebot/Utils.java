@@ -1,30 +1,12 @@
 package gamebot;
 
-import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.IOException;
-import java.net.URL;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.FormatStyle;
 import java.time.temporal.ChronoField;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Random;
 
-import javax.imageio.ImageIO;
-
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.imgscalr.Scalr;
-
-import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
-import com.fasterxml.jackson.annotation.JsonInclude.Include;
-import com.fasterxml.jackson.annotation.PropertyAccessor;
-import com.fasterxml.jackson.databind.MapperFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
 
 import discord4j.discordjson.json.ComponentData;
 import discord4j.rest.util.Color;
@@ -92,59 +74,4 @@ public class Utils {
 	public static DateTimeFormatter getHumanReadableDateFormatter() {
 		return DateTimeFormatter.ofLocalizedDateTime(FormatStyle.FULL, FormatStyle.SHORT);
 	}
-
-	public static ObjectMapper buildObjectMapper() {
-		ObjectMapper mapper = new ObjectMapper();
-		mapper.configure(MapperFeature.PROPAGATE_TRANSIENT_MARKER, true);
-		mapper.setVisibility(PropertyAccessor.ALL, Visibility.NONE);
-		mapper.setVisibility(PropertyAccessor.FIELD, Visibility.ANY);
-		mapper.setSerializationInclusion(Include.NON_NULL);
-		mapper.enable(SerializationFeature.INDENT_OUTPUT);
-		mapper.disable(SerializationFeature.FAIL_ON_EMPTY_BEANS);
-		return mapper;
-	}
-
-	public static void saveDataIntoMap(HashMap<String, Long> map, String fileName) {
-		ArrayList<String> lines = new ArrayList<>();
-		for (Map.Entry<String, Long> entry : map.entrySet()) {
-			lines.add(entry.getKey() + " " + entry.getValue());
-		}
-		try {
-			FileUtils.writeLines(new File(fileName), lines);
-		} catch (IOException e) {
-			ChannelLogger.logMessageWarning("Failed  to save file '" + fileName + "'");
-		}
-	}
-
-	public static String constructMultiLineString(int breakSize, String... strings) {
-		StringBuilder sb = new StringBuilder();
-		String lineBreak = "\n";
-		for (int i = 1; i < breakSize; i++) {
-			lineBreak += "\n";
-		}
-		for (String s : strings) {
-			sb.append(s).append(lineBreak);
-		}
-		return sb.toString();
-	}
-
-	public static void downloadJPG(String url, String name, int px) {
-		char ps = File.separatorChar;
-		File filePath = new File(System.getProperty("user.home") + ps + "Pictures" + ps + name + ".jpg");
-		System.out.println(filePath.getPath());
-		try {
-			FileUtils.copyURLToFile(new URL(url), filePath, 3000, 5000);
-			BufferedImage image = ImageIO.read(filePath);
-			ImageIO.write(Scalr.resize(image, px), "jpg", filePath);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
-
-	@SafeVarargs
-	public static <T> T randomOf(T... types) {
-		Random random = new Random();
-		return types[random.nextInt(types.length)];
-	}
-
 }
