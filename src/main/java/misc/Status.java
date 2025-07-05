@@ -1,4 +1,4 @@
-package gamebot;
+package misc;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -8,6 +8,8 @@ import java.nio.charset.Charset;
 import java.util.List;
 
 import com.google.common.io.Files;
+
+import gamebot.ChannelLogger;
 
 public class Status {
 

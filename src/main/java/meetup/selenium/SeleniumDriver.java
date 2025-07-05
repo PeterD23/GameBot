@@ -1,10 +1,13 @@
 package meetup.selenium;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 
+import org.apache.commons.io.FileUtils;
 import org.openqa.selenium.By;
+import org.openqa.selenium.Cookie;
 import org.openqa.selenium.StaleElementReferenceException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
@@ -18,6 +21,7 @@ import com.google.common.io.Files;
 
 import gamebot.ChannelLogger;
 import io.github.bonigarcia.wdm.WebDriverManager;
+import reactor.core.publisher.Mono;
 import reactor.util.Logger;
 import reactor.util.Loggers;
 
@@ -25,16 +29,12 @@ public class SeleniumDriver {
 
 	private boolean lock = false;
 
-	private static Logger log = Loggers.getLogger("logger");
+	private static Logger log = Loggers.getLogger("seleniumdriver");
 	private WebDriver webDriver;
 	private final String meetupUrl = "https://www.meetup.com/Edinburgh-Local-Video-Gamers/events/";
 	private FluentWait<WebDriver> wait;
 
 	private final String baseXPath = "//div[starts-with(@id, 'e-')]/a";
-	private final String eventName = "//main//h1";
-	private final String eventDate = "//div[contains(@class,'pl-4')]/time";
-	private final String attendeeText = "//div[@id='attendees']/div/h2";
-
 	private static SeleniumDriver instance;
 
 	public static SeleniumDriver getInstance() {
@@ -63,32 +63,43 @@ public class SeleniumDriver {
 		WebDriverManager.chromedriver().setup();
 		webDriver = new ChromeDriver(setHeadlessMode());
 		wait = new WebDriverWait(webDriver, 15).ignoring(StaleElementReferenceException.class);
-		if (login())
-			log.info("Successfully logged in to Meetup");
-		else
-			log.error("Failed to log into Meetup");
 	}
 
 	private ChromeOptions setHeadlessMode() {
-		return new ChromeOptions().addArguments("--headless", "--window-size=1920,1080");
+		return new ChromeOptions().addArguments("--headless","--window-size=1920,1080");
+	}
+	
+	public String refreshCookie(String token) {
+		try {
+			FileUtils.write(new File("cookie"), token, Charset.defaultCharset());
+			login();
+			return "Mmmmm... Delicious cookie :cookie:";
+		} catch (IOException e) {
+			ChannelLogger.logMessageError("Couldn't save the cookie :(", e);
+			return "I think that cookie was rancid because my system didn't like it :(";
+		}
 	}
 
-	public boolean login() {
+	public Mono<Void> login() {
+		// Want to see a magic trick?
 		lock();
 		try {
-			ArrayList<String> creds = new ArrayList<>(Files.readLines(new File("creds"), Charset.defaultCharset()));
 			webDriver.get("https://www.meetup.com");
-			Element("//a[contains(@id, 'login-link')]").click();
-			Element("//input[contains(@type, 'email')]").sendKeys(creds.get(0));
-			Element("//input[contains(@type, 'password')]").sendKeys(creds.get(1));
-			ClickElement("//button[contains(text(), 'Log in')]");
-			ClickElement("//button[@id='onetrust-accept-btn-handler']");
+			Thread.sleep(3000);
+			// Pass the session cookie in, organically sourced
+			webDriver.manage().addCookie(
+					new Cookie(
+							"__meetup_auth_access_token", 
+							Files.readLines(new File("cookie"), Charset.defaultCharset()).get(0)
+							));
+			webDriver.navigate().refresh();
+			// Tada! How to log in to a website without solving a captcha
+			Element("//img[@alt='Photo of Bot McBotterson']");
 			unlock();
-			return true;
+			return ChannelLogger.logMessageInfo("Successfully logged into Meetup :cookie:");
 		} catch (Exception e) {
-			ChannelLogger.logHighPriorityMessage("Unable to login to Meetup.", e);
 			unlock();
-			return false;
+			return ChannelLogger.logHighPriorityMessage("Unable to login to Meetup. Cookie may be expired and need to be refreshed.", e);
 		}
 	}
 	
@@ -113,87 +124,23 @@ public class SeleniumDriver {
 		return ids;
 	}
 
-	public long checkCode(String code) {
+	public String checkCode(String code) {
 		lock();
 		String messagesUrl = ("https://www.meetup.com/messages");
-		long meetupId = 0L;
+		String meetupId = "";
 		try {
 			webDriver.get(messagesUrl);
 			Element("//p[text()='"+code+"']").click();
 			Thread.sleep(3000);
 			Element("//div[contains(@class,'styles_messages')]//button").click();
 			String profileUrl = Element("//a[text()='View Profile']").getAttribute("href");
-			meetupId = new Long(extractIdFromMeetupUrl(profileUrl)).longValue();
+			meetupId = extractIdFromMeetupUrl(profileUrl);
 		} catch (Exception e) {
 			ChannelLogger.logMessageError("Error occurred during verification due to ",e);
 		} finally {
 			unlock();
 		}
 		return meetupId;
-	}
-
-	public ArrayList<Pair<String, String>> collateAttendees(String eventId) {
-		String attendeeList = "//main//div[@class='mt-6 ']/div/div[@class='flex']";
-		lock();
-		try {
-			ArrayList<Pair<String, String>> attendeePair = new ArrayList<>();
-			webDriver.get(meetupUrl + eventId + "/attendees/");
-			int attendees = Elements(attendeeList).size();
-			for (int i = 1; i <= attendees; i++) {
-				String name = TextOf(attendeeList + "[" + i + "]//preceding-sibling::span");
-				String link = extractIdFromMeetupUrl(getAttendeeId(attendeeList + "[" + i + "]//button"));
-				log.info("Extracted: " + name + ", " + link);
-				attendeePair.add(new Pair<>(name, link));
-			}
-			return attendeePair;
-		} catch (Exception e) {
-			ChannelLogger.logHighPriorityMessage("Failed to collate attendee list.", e);
-			return new ArrayList<>();
-		} finally {
-			unlock();
-		}
-	}
-	
-	public ArrayList<MeetupEvent> returnEventData() {
-		lock();
-		ArrayList<MeetupEvent> eventData = new ArrayList<>();
-		try {
-			webDriver.get(meetupUrl);
-			if (!doesElementExist(baseXPath, "Checking to see if there are any events"))
-				return eventData;
-			ArrayList<WebElement> cards = Elements(baseXPath);
-			ArrayList<String> urls = new ArrayList<>();
-			for (WebElement card : cards) {
-				ChannelLogger.logMessageInfo("Adding card to list...");
-				urls.add(getEventUrl(card));
-			}
-			for (String url : urls) {
-				log.info("Resolving URL " + url);
-				ChannelLogger.logMessageInfo("Resolving URL " + url.replace("https://www.", ""));
-				webDriver.get(url);
-				eventData.add(compileEvent(url));
-				webDriver.get(meetupUrl);
-				ChannelLogger.logMessageInfo("Successfully compiled event");
-			}
-			return eventData;
-		} catch (Exception e) {
-			ChannelLogger.logHighPriorityMessage("Failed to compile full event data.", e);
-			return eventData;
-		} finally {
-			unlock();
-		}
-	}
-
-	private MeetupEvent compileEvent(String eventUrl) {
-		MeetupEvent event = new MeetupEvent();
-		try {
-			String eventId = extractIdFromMeetupUrl(eventUrl);
-			event.addId(eventId).addUrl(eventUrl).addName(TextOf(eventName)).addDate(TextOf(eventDate))
-					.addCurrentAttendees(TextOf(attendeeText));
-		} catch (Exception e) {
-			ChannelLogger.logHighPriorityMessage("Failed to compile event.", e);
-		}
-		return event;
 	}
 
 	private boolean doesElementExist(String xpath, String reason) {
@@ -206,38 +153,12 @@ public class SeleniumDriver {
 		}
 	}
 
-	private String getAttendeeId(String link) {
-		// Open new tab and enable full list
-		ClickElement("//div[@data-testid='attendees-tab-container']/button[2]");
-		ClickElement("//div[@data-testid='attendees-tab-container']/button[1]");		
-		try {
-			ClickElement(link);
-			// Wait for page to load
-			Thread.sleep(200);
-
-			// Get tabs and switch between them
-			ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());
-			webDriver.switchTo().window(tabs.get(1));
-			String id = extractIdFromMeetupUrl(webDriver.getCurrentUrl());
-			webDriver.close();
-			webDriver.switchTo().window(tabs.get(0));
-			Thread.sleep(100);
-			return id;
-		} catch (Exception e) {
-			return "Attendee";
-		}
-	}
-
 	private String extractIdFromMeetupUrl(String url) {
 		return url.replaceAll("\\D{0,}", "");
 	}
 
 	private String getEventUrl(WebElement element) {
 		return element.getAttribute("href");
-	}
-
-	private String TextOf(String xpath) {
-		return Element(xpath).getText();
 	}
 
 	private ArrayList<WebElement> Elements(String xpath) {
@@ -259,6 +180,13 @@ public class SeleniumDriver {
 			}
 			attempts++;
 		}
+	}
+
+	public void rsvpUser(String eventId, String[] data) {
+		webDriver.get(meetupUrl+eventId+"/attendees");
+		Element("//input[@data-testid='attendee-search']").sendKeys(data[0]);
+		ClickElement("//img[@src='"+data[1]+"']/ancestor::div[6]//button[@aria-haspopup='menu']");
+		ClickElement("//button[text()='Move to \"Going\"']");
 	}
 
 }

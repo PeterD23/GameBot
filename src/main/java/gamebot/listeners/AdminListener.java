@@ -8,82 +8,64 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 import discord4j.common.util.Snowflake;
+import discord4j.core.GatewayDiscordClient;
+import discord4j.core.event.domain.guild.GuildCreateEvent;
+import discord4j.core.event.domain.interaction.ButtonInteractionEvent;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
-import discord4j.core.event.domain.lifecycle.ReadyEvent;
-import discord4j.core.event.domain.message.MessageCreateEvent;
-import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.Message;
-import discord4j.core.object.entity.channel.Channel;
-import discord4j.core.object.entity.channel.PrivateChannel;
-import discord4j.core.object.entity.channel.TextChannel;
 import gamebot.ChannelLogger;
 import gamebot.CoreHelpers;
-import gamebot.SpotifyHelpers;
-import gamebot.Status;
-import gamebot.Utils;
+import gamebot.EvgIds;
+import gamebot.GameBot;
 import gamebot.commands.ISlashCommand;
 import gamebot.commands.SubscribeCommand;
+import gamebot.commands.TrustCommand;
 import gamebot.commands.admin.CallbackCommand;
 import gamebot.commands.admin.CallbackNoArgCommand;
 import gamebot.commands.admin.ReadCommand;
 import meetup.api.JwtDTO;
 import meetup.api.MeetupApiQuerier;
 import meetup.api.MeetupApiResponse;
-import meetup.api.RsvpUser;
-import meetup.selenium.MeetupEvent;
 import meetup.selenium.MeetupEventManager;
 import meetup.selenium.MeetupLinker;
 import meetup.selenium.SeleniumDriver;
 import misc.Birthday;
+import misc.MessageCache;
+import misc.SpotifyHelpers;
+import misc.Status;
+import misc.Utils;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.Logger;
 import reactor.util.Loggers;
+import trustsystem.RecommendedActions;
 
 public class AdminListener extends CoreHelpers implements IListener {
 
 	// Selenium Driver Stuff
 	private boolean panic = false;
-	private int fetchFrequency = 15;
-	private long MEETUP = 732273589432090678L;
-	private final String prependData = "\nHere is an upcoming event:\n>>> ";
+	private int fetchFrequency = 1;
 	private static SeleniumDriver driver;
 
 	private String playlist = "1xfucmjxRtcxXolfNaaA5M";
 	private static Logger log = Loggers.getLogger("logger");
 	private HashMap<String, ISlashCommand> commands = new HashMap<>();
 
-	public void onReady(ReadyEvent event) {
-		init(event);
-		initialiseCommands();
-		driver = SeleniumDriver.getInstance();
+	public Mono<Void> onReady(GuildCreateEvent event) {
+		return init(event).then(Mono.fromRunnable(() -> initialiseCommands()))
+				.then(Mono.fromCallable(() -> driver = SeleniumDriver.getInstance()))
+				.flatMap(webdriver -> webdriver.login());
 	}
 
-	public void onMessage(MessageCreateEvent event) {
-		Message message = event.getMessage();
-		Member usr = message.getAuthorAsMember().block();
-
-		if (!isAdmin(usr))
-			return;
-
-		if (Utils.isTestingMode()) {
-			return;
+	public Mono<?> onCommand(ChatInputInteractionEvent event) {
+		String command = event.getCommandName();
+		if (Utils.isTestingMode() && !command.equals("test")) {
+			return Mono.empty();
 		}
-
-		Channel chn = message.getChannel().block();
-		if (chn instanceof PrivateChannel)
-			return; // discard pm
-
-		if (usr.isBot())
-			return;
-	}
-
-	public void onCommand(ChatInputInteractionEvent event) {
-		if (Utils.isTestingMode() && event.getCommandName() != "test") {
-			return;
+		if (commands.get(command) != null && isAdmin(event.getInteraction().getMember().get())) {
+			return commands.get(command).submitCommand(event);
 		}
-		if (commands.get(event.getCommandName()) != null && isAdmin(event.getInteraction().getMember().get())) {
-			commands.get(event.getCommandName()).submitCommand(event).block();
-		}
+		return Mono.empty();
 	}
 
 	private void initialiseCommands() {
@@ -99,6 +81,30 @@ public class AdminListener extends CoreHelpers implements IListener {
 		commands.put("panic", panic());
 		commands.put("set-fetch-freq", setFetchFrequency());
 		commands.put("set-playlist", setPlaylist());
+		commands.put("feed-cookie", feedGameBotACookie());
+		commands.put("build-cache", buildCache());
+		commands.put("see-trust", new TrustCommand(true));
+
+		GatewayDiscordClient client = GameBot.gateway;
+		registerCommand(new TrustCommand(true));
+	
+		client.getRestClient().getApplicationId().map(applicationId -> 
+			Flux.fromIterable(commands.entrySet())
+			.map(entry -> entry.getValue().getCommandRequest())
+			.collectList()
+			.map(list -> client.getRestClient()
+				.getApplicationService()
+				.bulkOverwriteGuildApplicationCommand(applicationId, GameBot.SERVER, list)))
+		.then(ChannelLogger.logMessageInfo("Admin Commands successfully registered!")).subscribe();
+	}
+	
+	private void registerCommand(ISlashCommand command) {
+		GatewayDiscordClient client = GameBot.gateway;
+		client.getRestClient().getApplicationId().log(Loggers.getLogger("Register Command"))
+		.map(applicationId -> client.getRestClient()
+				.getApplicationService()
+				.createGuildApplicationCommand(applicationId, GameBot.SERVER, command.getCommandRequest()).subscribe()
+		).subscribe();
 	}
 
 	private CallbackNoArgCommand recommend() {
@@ -123,10 +129,9 @@ public class AdminListener extends CoreHelpers implements IListener {
 
 	private CallbackNoArgCommand sync() {
 		return new CallbackNoArgCommand("sync", "Re-loads files on disk", evt -> {
-			SubscribeCommand.get().readDataIntoTuple("genres");
-			MeetupLinker.readVerified();
-			MeetupEventManager.init();
-			return evt.reply("Re-synchronised genre, verified and event lists!").then();
+			return evt.deferReply().then(SubscribeCommand.get().readGenres()).then(MeetupLinker.readVerified())
+					.then(MeetupEventManager.init())
+					.then(evt.editReply("Re-synchronised genre, verified and event lists!")).then();
 		});
 	}
 
@@ -143,10 +148,11 @@ public class AdminListener extends CoreHelpers implements IListener {
 
 	private CallbackNoArgCommand clearChannel() {
 		return new CallbackNoArgCommand("clear", "Clears a channel", evt -> {
-			TextChannel chn = getChannel(CONSOLE);
-			Snowflake lastMsg = chn.getLastMessageId().get();
-			chn.bulkDelete(chn.getMessagesBefore(lastMsg).map(m -> m.getId())).blockFirst();
-			return evt.reply("Deleted the contents of console.").then();
+			return getChannel(EvgIds.CONSOLE_CHANNEL.id()).flatMap(chn -> {
+				Snowflake lastMsg = chn.getLastMessageId().get();
+				chn.bulkDelete(chn.getMessagesBefore(lastMsg).map(m -> m.getId())).blockFirst();
+				return evt.reply("Deleted the contents of console.").then();
+			});
 		});
 	}
 
@@ -166,149 +172,159 @@ public class AdminListener extends CoreHelpers implements IListener {
 	}
 
 	private CallbackCommand setFetchFrequency() {
-		return new CallbackCommand("set-fetch-freq", "Set the fetching frequency of the Meetup Event").withIntArg("freq", "Frequency in minutes", 5, 90).withCallBack(evt -> {
-			int val = evt.getOptionAsLong("freq").get().intValue();
-			fetchFrequency = val;
-			return evt.reply("Set Meetup Fetch Frequency to " + val + " minutes.");
-		}).create();
+		return new CallbackCommand("set-fetch-freq", "Set the fetching frequency of the Meetup Event")
+				.withIntArg("freq", "Frequency in minutes", 5, 90).withCallBack(evt -> {
+					int val = evt.getOptionAsLong("freq").get().intValue();
+					fetchFrequency = val;
+					return evt.reply("Set Meetup Fetch Frequency to " + val + " minutes.");
+				});
 	}
 
 	private CallbackCommand setPlaylist() {
 		return new CallbackCommand("set-playlist", "Set the Spotify Playlist")
-				.withStringArg("id", "Id of the playlist", 22, 22)
-				.withCallBack(evt -> evt.reply("Set playlist to https://open.spotify.com/playlist/"+evt.getOption("id")).withEphemeral(true)).create();
+				.withStringArg("id", "Id of the playlist", 22, 22).withCallBack(
+						evt -> evt.reply("Set playlist to https://open.spotify.com/playlist/" + evt.getOption("id"))
+								.withEphemeral(true));
 	}
-	
+
+	private CallbackCommand feedGameBotACookie() {
+		return new CallbackCommand("feed-cookie", "Refresh the Meetup Login Session Cookie")
+				.withStringArg("token", "JWT Bearer Token", 450, 450).withCallBack(evt -> {
+					String token = evt.getOptionAsString("token").get();
+					return evt.deferReply().then(Mono.fromSupplier(() -> driver.refreshCookie(token)))
+							.flatMap(str -> evt.editReply(str)).then();
+				});
+	}
+
+	private CallbackNoArgCommand buildCache() {
+		return new CallbackNoArgCommand("build-cache", "Generate a message cache of all users", evt -> {
+			return evt.reply("Generating cache, this may take a while...").then(MessageCache.cacheUsers(guild))
+					.then(evt.createFollowup("Completed!")).then();
+		});
+	}
+
+	public Mono<?> onCommand(ButtonInteractionEvent event) {
+		String[] id = event.getCustomId().split("_");
+		String userId = event.getUser().getId().asString();
+		String meetupId = MeetupLinker.getMeetupUser(userId);
+		if (id[0].startsWith("ts.")) {
+			return RecommendedActions.invokeAdminOption(id);
+		}
+		if (!id[0].startsWith("rsvp")) {
+			return Mono.empty();
+		}
+		if (meetupId.isEmpty()) {
+			return event.reply(
+					"You aren't Meetup Verified so you cannot use this feature! Use `/link-meetup` to associate your Meetup account with Discord!")
+					.withEphemeral(true);
+		}
+
+		MeetupApiQuerier meetupApi = new MeetupApiQuerier();
+		return event.deferReply().withEphemeral(true)
+				.then(Mono.fromCallable(() -> meetupApi.generateApiToken()).flatMap(token -> {
+					String[] userData = meetupApi.getNameAndImageOfUser(token, meetupId);
+					MeetupApiResponse meetupEvent = meetupApi.getEventDetails(token, id[1]);
+					if (meetupEvent.getUsers().stream()
+							.anyMatch(user -> user.getId().equals(String.valueOf(meetupId)))) {
+						return event.editReply("You are already RSVP'd to this event!");
+					}
+					if (meetupEvent.canRsvp()) {
+						try {
+							driver.rsvpUser(id[1], userData);
+						} catch (Exception e) {
+							return event.editReply("I failed to RSVP you, sorry :(");
+						}
+						meetupEvent = meetupApi.getEventDetails(token, id[1]);
+						if (meetupEvent.getUsers().stream()
+								.anyMatch(user -> user.getId().equals(String.valueOf(meetupId)))) {
+							return event.editReply("Congrats, you are now going to this event!");
+						}
+					}
+					return event.editReply(
+							"I'm sorry but this event is now full. You can add yourself to the waitlist from the Meetup event page.");
+				}));
+	}
+
 	// ------------- Timed Interval Methods
 
-	public void tick() {
+	public Mono<?> tick() {
 		if (panic) {
-			return;
+			return Mono.empty();
 		}
 		log.info("IntervalListener is currently ticking");
 		LocalTime time = LocalTime.now();
 		if (time.getHour() == 12 && time.getMinute() == 0) {
-			recommendSong();
-			birthdayCheck();
+			return recommendSong().then(birthdayCheck());
 		} else if (time.getMinute() % fetchFrequency == 0) {
-			// fetchEventData();
-			fetchEventDataFromApi();
-			ArrayList<String> pastEvents = MeetupEventManager.scheduleMessagesForDeletion();
-			for (String s : pastEvents) {
-				log.info("Deleting message ID " + s);
-				deleteMessage(MEETUP, s, "Expired Event");
-			}
+			return fetchEventDataFromApi().then(MeetupEventManager.scheduleMessagesForDeletion())
+					.flatMapMany(list -> Flux.fromIterable(list))
+					.flatMap(pastEvent -> ChannelLogger.logMessageInfo("Deleting Past Event ID " + pastEvent).then(
+							deleteMessage(EvgIds.MEETUP_CHANNEL.id(), Long.parseLong(pastEvent), "Expired Event")))
+					.then();
 		}
+		return Mono.empty();
 	}
 
-	private void birthdayCheck() {
+	private Mono<?> birthdayCheck() {
+		long general = EvgIds.GENERAL_CHANNEL.id();
 		LocalDate today = LocalDate.now();
 		log.info("Scheduled check for birthdays");
-		ArrayList<Long> birthdays = Birthday.hasBirthdaysToday();
-		for (Long user : birthdays) {
-			sendMessage(GENERAL, "Happy birthday " + getUserIfMentionable(user.longValue())).block();
-		}
-		if (today.getMonthValue() == 5 && today.getDayOfMonth() == 23) {
-			sendMessage(GENERAL, "Happy Birthday " + getUserById(97036843924598784L).getMention()
-					+ "! Please wish him a happy birthday which I totally thought up myself and wasn't hastily added to my programming by him 5 days prior").block();
-		}
-		if (today.getMonthValue() == 7 && today.getDayOfMonth() == 11) {
-			sendMessage(GENERAL, "It is July 11th, my birthday today! Today marks " + (today.getYear() - 2020)
-					+ " years since I first joined the server.").block();
-		}
+		return Mono.when(Flux.fromIterable(Birthday.hasBirthdaysToday()).flatMap(user -> {
+			return sendMessage(general, "Happy birthday " + getUserMention(user));
+		})).then(Mono.fromRunnable(() -> {
+			if (today.getMonthValue() == 5 && today.getDayOfMonth() == 23) {
+				sendMessage(general, "Happy Birthday " + mentionMe()
+						+ "! Please wish him a happy birthday which I totally thought up myself and wasn't hastily added to my programming by him 5 days prior")
+						.then();
+			}
+			if (today.getMonthValue() == 7 && today.getDayOfMonth() == 11) {
+				sendMessage(general, "It is July 11th, my birthday today! Today marks " + (today.getYear() - 2020)
+						+ " years since I first joined the server.").then();
+			}
+		}));
 	}
 
-	private void recommendSong() {
+	private Mono<Message> recommendSong() {
+		long music = EvgIds.MUSIC_CHANNEL.id();
 		log.info("Scheduled recommendation for music");
 		ChannelLogger.logMessageInfo("Time is 12 pm, recommending a song from Spotify");
 		if (LocalDateTime.now().getDayOfWeek() == DayOfWeek.FRIDAY) {
-			sendMessage(MUSIC, "https://open.spotify.com/track/79ozNtJ4aqVaAav0bqXpji").block();
-			return;
+			return sendMessage(music, "https://open.spotify.com/track/79ozNtJ4aqVaAav0bqXpji");
 		}
 		String song = SpotifyHelpers.recommendSong(playlist);
 		if (song.length() > 0) {
-			sendMessage(MUSIC, song).block();
+			return sendMessage(music, song);
 		}
+		return Mono.empty();
 	}
 
-	private void sendMessageIfValid(MeetupEvent event, String content) {
-		boolean validDate = !event.getDate().equals("err");
-		if (!validDate) {
-			ChannelLogger.logMessageError(
-					"Unable to parse the date for event " + event.getID() + ", using placeholder date.", new RuntimeException());
-		}
-		Message message = sendMessage(MEETUP, content).block();
-		pinMessage(MEETUP, message.getId()).block();
-		MeetupEventManager.addEvent(event.getID(), message.getId().asString(), validDate ? event.getDate() : "2050-01-01T00:00");
-		ChannelLogger.logMessageInfo("Added new pinned event to Event List");
-	}
-
-	private String mapAttendees(ArrayList<RsvpUser> attendees) {
-		String list = "\n\n";
-		ChannelLogger.logMessageInfo("Found " + attendees.size() + " attendees for event to append");
-		for (RsvpUser attendee : attendees) {
-			long userId = MeetupLinker.getUserByMeetupId(Long.parseLong(attendee.getId()));
-			list += attendee.getName().split(" ")[0] + (userId != 0L ? ": " + getUserIfMentionable(userId) : "") + "\n";
-		}
-		return list;
-	}
-
-	private void fetchEventDataFromApi() {
+	private Mono<Void> fetchEventDataFromApi() {
 		log.info("Fetching events from Meetup");
 		ChannelLogger.logMessageInfo("Fetching events from Meetup API, time is " + LocalTime.now().toString());
 		MeetupApiQuerier meetupApi = new MeetupApiQuerier();
 		JwtDTO token = meetupApi.generateApiToken();
 
-		if (driver.isLocked()) {
-			log.info("Driver is currently busy, will try again in 15");
-			ChannelLogger.logMessageWarning("Driver attempted to fetch events but is currently busy");
-			return;
-		}
-		ArrayList<String> eventIds = driver.getEventIds();
-		ChannelLogger.logMessageInfo("Found " + eventIds.size() + " events from Meetup");
-		for (String eventId : eventIds) {
-			MeetupApiResponse event = meetupApi.getEventDetails(token, eventId);
-			String message = getEveryoneMention() + prependData + event.toString() + mapAttendees(event.getUsers());
-			String possibleId = MeetupEventManager.hasEvent(eventId);
-			if (possibleId != "") {
-				editMessage(MEETUP, possibleId, message);
-			} else {
-				sendMessageIfValid(eventId, event, message);
-			}
+		try {
+			ArrayList<String> eventIds = meetupApi.getUpcomingEvents(token);
+			ChannelLogger.logMessageInfo("Found " + eventIds.size() + " events from Meetup");
+			return Mono.when(Flux.fromIterable(eventIds)
+					.flatMap(eventId -> Mono.fromCallable(() -> meetupApi.getEventDetails(token, eventId)).flatMap(
+							event -> Mono.zip(Mono.just(event), Mono.just(MeetupEventManager.hasEvent(eventId))))
+							.flatMap(tuple -> {
+								return tuple.getT2() != "" ? editMessage(EvgIds.MEETUP_CHANNEL.id(),
+										Long.parseLong(tuple.getT2()), tuple.getT1().build())
+										: sendMessageIfValid(eventId, tuple.getT1());
+							})));
+		} catch (Exception e) {
+			ChannelLogger.logMessageError("Error, unable to get events from Meetup API", e);
+			return Mono.empty();
 		}
 	}
 
-	private void sendMessageIfValid(String eventId, MeetupApiResponse event, String content) {
-		Message message = sendMessage(MEETUP, content).block();
-		pinMessage(MEETUP, message.getId()).block();
-		MeetupEventManager.addEvent(eventId, message.getId().asString(), event.getDateTime());
-		ChannelLogger.logMessageInfo("Added new pinned event to Event List");
-	}
-
-	// Archived for documentation purposes in case Meetup fuckin make the API
-	// unusable
-	@SuppressWarnings("unused")
-	private void fetchEventData() {
-		log.info("Fetching events from Meetup");
-		ChannelLogger.logMessageInfo("Fetching events from Meetup, time is " + LocalTime.now().toString());
-
-		if (driver.isLocked()) {
-			log.info("Driver is currently busy, will try again in 15");
-			ChannelLogger.logMessageWarning("Driver attempted to fetch events but is currently busy");
-			return;
-		}
-		ArrayList<MeetupEvent> events = driver.returnEventData();
-		ChannelLogger.logMessageInfo("Found " + events.size() + " events from Meetup");
-		for (MeetupEvent event : events) {
-			if (event.toString().equals("err"))
-				continue;
-			String message = getEveryoneMention() + prependData + event.toString();
-			String possibleId = MeetupEventManager.hasEvent(event);
-			if (possibleId != "") {
-				editMessage(MEETUP, possibleId, message);
-			} else {
-				sendMessageIfValid(event, message);
-			}
-		}
+	private Mono<Void> sendMessageIfValid(String eventId, MeetupApiResponse event) {
+		return sendMessage(EvgIds.MEETUP_CHANNEL.id(), event.build())
+				.flatMap(message -> message.pin().then(Mono.fromRunnable(
+						() -> MeetupEventManager.addEvent(eventId, message.getId().asString(), event.getDateTime()))))
+				.then(ChannelLogger.logMessageInfo("Added new pinned event to Event List"));
 	}
 }
