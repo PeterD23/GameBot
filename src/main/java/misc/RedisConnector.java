@@ -22,7 +22,6 @@ import com.fasterxml.jackson.databind.type.CollectionType;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 
 import gamebot.ChannelLogger;
-import gamebot.Utils;
 import io.lettuce.core.RedisClient;
 import io.lettuce.core.RedisURI.Builder;
 import io.lettuce.core.api.StatefulRedisConnection;
@@ -33,7 +32,6 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.Logger;
 import reactor.util.Loggers;
-import trustsystem.Mergeable;
 
 public class RedisConnector {
 
@@ -102,25 +100,6 @@ public class RedisConnector {
 	}
 
 	// Read a hash in the type of T and convert the json string into a list
-	public static <T> Mono<Void> modifyList(String key, String field, Class<T> type, T object) {
-		return readList(key, field, type).map(list -> {
-			for (int i = 0; i < list.size(); i++) {
-				if (list.get(i).equals(object))
-					list.set(i, object);
-			}
-			return list;
-		}).flatMap(list -> {
-			try {
-				if (list.size() == 0)
-					return putInitialValue(key, field, object).then();
-				return reactiveConnect().hset(key, field, ow.writeValueAsString(list)).then();
-			} catch (Exception e) {
-				return ChannelLogger.logMessageError("Error in overwriting list", e);
-			}
-		}).then();
-	}
-
-	// Read a hash in the type of T and convert the json string into a list
 	public static <T> Mono<List<T>> readList(String key, String field, Class<T> type) {
 		return readValue(key, field).hasElement().flatMap(has -> has ? readValue(key, field).map(entry -> {
 			CollectionType typeReference = TypeFactory.defaultInstance().constructCollectionType(ArrayList.class, type);
@@ -185,6 +164,9 @@ public class RedisConnector {
 	}
 
 	public static Mono<Void> deleteEntry(String key, String... fields) {
+		if(fields.length == 0) {
+			return Mono.empty();
+		}
 		return reactiveConnect().hdel(key, fields).then();
 	}
 

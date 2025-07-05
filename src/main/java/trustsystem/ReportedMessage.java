@@ -8,7 +8,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import discord4j.common.util.Snowflake;
 import discord4j.core.object.entity.Attachment;
 import discord4j.core.object.entity.Message;
-import gamebot.Utils;
+import misc.Utils;
 
 public class ReportedMessage {
 

@@ -28,6 +28,7 @@ import gamebot.listeners.UserListener;
 import io.lettuce.core.RedisClient;
 import meetup.selenium.MeetupEventManager;
 import misc.RedisConnector;
+import misc.SpotifyHelpers;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Hooks;
 import reactor.core.publisher.Mono;
@@ -72,10 +73,6 @@ public class GameBot {
 				.then(gateway.onDisconnect()).block();
 		
 		redis.close();
-	}
-	
-	public static Store getStore() {
-		return gateway.getGatewayResources().getStore();
 	}
 	
 	public static <E extends ComponentInteractionEvent, T> void createTempInteraction(Class<E> event,

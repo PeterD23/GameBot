@@ -10,7 +10,8 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import discord4j.common.util.Snowflake;
 import discord4j.core.object.entity.Message;
 import discord4j.core.object.entity.User;
-import gamebot.Utils;
+import misc.Mergeable;
+import misc.Utils;
 import trustsystem.TrustSystem.TrustRating;
 
 public class ReportedUser implements Mergeable<ReportedUser> {
@@ -81,15 +82,6 @@ public class ReportedUser implements Mergeable<ReportedUser> {
 	@JsonIgnore
 	public String getReported() {
 		return reportedUserId;
-	}
-
-	@JsonIgnore
-	public String allReports() {
-		String data = "";
-		for (ReportedMessage message : reportedMessages) {
-			data += message.getContent() + " - For reasons: " + String.join(",", message.reasons()) + "\n";
-		}
-		return data;
 	}
 
 	public boolean reasons(String... reasons) {

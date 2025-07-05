@@ -17,9 +17,6 @@ import gamebot.ChannelLogger;
 import gamebot.CoreHelpers;
 import gamebot.EvgIds;
 import gamebot.GameBot;
-import gamebot.SpotifyHelpers;
-import gamebot.Status;
-import gamebot.Utils;
 import gamebot.commands.ISlashCommand;
 import gamebot.commands.SubscribeCommand;
 import gamebot.commands.TrustCommand;
@@ -34,6 +31,9 @@ import meetup.selenium.MeetupLinker;
 import meetup.selenium.SeleniumDriver;
 import misc.Birthday;
 import misc.MessageCache;
+import misc.SpotifyHelpers;
+import misc.Status;
+import misc.Utils;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.Logger;
@@ -324,7 +324,7 @@ public class AdminListener extends CoreHelpers implements IListener {
 	private Mono<Void> sendMessageIfValid(String eventId, MeetupApiResponse event) {
 		return sendMessage(EvgIds.MEETUP_CHANNEL.id(), event.build())
 				.flatMap(message -> message.pin().then(Mono.fromRunnable(
-						() -> MeetupEventManager.addEvent(message.getId().asString(), eventId, event.getDateTime()))))
+						() -> MeetupEventManager.addEvent(eventId, message.getId().asString(), event.getDateTime()))))
 				.then(ChannelLogger.logMessageInfo("Added new pinned event to Event List"));
 	}
 }

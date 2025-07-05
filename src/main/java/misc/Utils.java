@@ -1,4 +1,4 @@
-package gamebot;
+package misc;
 
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
@@ -12,25 +12,15 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.tuple.Pair;
 
 import discord4j.core.object.component.TopLevelMessageComponent;
 import discord4j.discordjson.json.ComponentData;
 import discord4j.discordjson.possible.Possible;
-import discord4j.rest.util.Color;
 
 public class Utils {
 
 	public static boolean testingMode = false;
 	public static boolean denyAdmins = false;
-
-	public static Color randomColor() {
-		Random random = new Random();
-		int r = random.nextInt(200) + 55;
-		int g = random.nextInt(200) + 55;
-		int b = random.nextInt(200) + 55;
-		return Color.of(r, g, b);
-	}
 	
 	@SafeVarargs
 	public static <T> ArrayList<T> combineDistinct(List<T>... lists){
@@ -66,13 +56,6 @@ public class Utils {
 
 	public static boolean adminsDenied() {
 		return denyAdmins;
-	}
-	
-	public static Pair<String, String> listToPair(List<String> list){
-		if(list.size() != 2) {
-			throw new RuntimeException("List is not of size 2");
-		}
-		return Pair.of(list.get(0), list.get(1));
 	}
 	
 	public static String listToSSVString(List<String> list) {

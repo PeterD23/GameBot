@@ -10,8 +10,8 @@ import discord4j.discordjson.json.ApplicationCommandOptionData;
 import discord4j.discordjson.json.ApplicationCommandRequest;
 import discord4j.discordjson.json.ImmutableApplicationCommandRequest;
 import gamebot.ICommand;
-import gamebot.Utils;
 import gamebot.commands.ISlashCommand;
+import misc.Utils;
 import reactor.core.publisher.Mono;
 
 public class CallbackCommand implements ISlashCommand {

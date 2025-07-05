@@ -30,10 +30,6 @@ public class ChannelLogger {
 		});
 	}
 	
-	public static boolean loggable() {
-		return logChannel != null;
-	}
-	
 	public static void logReady(){
 		 Mono.fromRunnable(() -> log.info("Sending ready message")).then(logMessage(":white_check_mark:",
 				":sparkles: Game Bot v1.2: 'Moderation Update' Successfully online! :sparkles:")).subscribe();

@@ -13,6 +13,7 @@ import discord4j.core.object.entity.channel.TextChannel;
 import discord4j.core.retriever.EntityRetrievalStrategy;
 import discord4j.rest.util.Permission;
 import discord4j.rest.util.PermissionSet;
+import misc.Utils;
 import reactor.core.publisher.Mono;
 
 public class CoreHelpers {
@@ -31,10 +32,6 @@ public class CoreHelpers {
 	
 	protected static String mentionMe() {
 		return "<@97036843924598784>";
-	}
-
-	protected static String getEveryoneMention() {
-		return "@everyone";
 	}
 	
 	protected static String getUserMention(String id) {
@@ -58,15 +55,6 @@ public class CoreHelpers {
 
 	protected Mono<Member> getUserById(long id) {
 		return guild.getMemberById(Snowflake.of(id), EntityRetrievalStrategy.STORE_FALLBACK_REST);
-	}
-
-	protected Mono<Void> editMessage(long channelId, long messageId, String newMessage) {
-		return ChannelLogger.logMessageInfo("Editing message ID " + messageId + " with String of length " + newMessage.length())
-				.then(getMessage(channelId, messageId)
-						.flatMap(message -> message.edit()
-								.withContentOrNull(newMessage)
-						))
-				.then();
 	}
 
 	protected Mono<Void> deleteMessage(long channelId, long messageId, String reason) {
@@ -101,10 +89,11 @@ public class CoreHelpers {
 		int length = components.stream().mapToInt(component -> Utils.recursiveLength(component.getData())).sum();
 		return ChannelLogger.logMessageInfo("Editing message ID " + messageId + " with String of length " + length)
 				.then(getMessage(channelId, messageId)
-						.flatMap(message -> message.edit()
+						.flatMap(message -> message.edit().withContentOrNull(null)
 								.withComponentsOrNull(components)
 						))
-				.then();
+				.then()
+				.onErrorResume(t -> ChannelLogger.logMessageError("Error in Editing Message "+messageId, t)); // Don't kill the whole Interval Listener, just fail the message
 	}
 
 	protected Mono<Message> getMessage(long channelId, long messageId) {

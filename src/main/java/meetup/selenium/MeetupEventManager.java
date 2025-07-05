@@ -10,8 +10,8 @@ import java.util.stream.Collectors;
 import org.apache.commons.lang3.tuple.Pair;
 
 import gamebot.ChannelLogger;
-import gamebot.Utils;
 import misc.RedisConnector;
+import misc.Utils;
 import reactor.core.publisher.Mono;
 
 public class MeetupEventManager {
@@ -27,10 +27,10 @@ public class MeetupEventManager {
 				}).then();
 	}
 	
-	public static Mono<Void> addEvent(String messageId, String eventId, String timeToDelete) {
+	public static Mono<Void> addEvent(String eventId, String messageId, String timeToDelete) {
 		Pair<String, String> pair = Pair.of(eventId, timeToDelete);
-		events.put(messageId, pair);
-		return RedisConnector.cacheEntry(key, Pair.of(messageId, Arrays.asList(eventId, timeToDelete)));
+		events.put(eventId, pair);
+		return RedisConnector.cacheEntry(key, Pair.of(eventId, Arrays.asList(messageId, timeToDelete)));
 	}
 	
 	public static Mono<ArrayList<String>> scheduleMessagesForDeletion() {
@@ -43,9 +43,9 @@ public class MeetupEventManager {
 								ZonedDateTime check = ZonedDateTime.parse(data.getRight(), Utils.getDateFormatter()).plusHours(16);
 								return time.compareTo(check) > 0; 
 							})
-							.map(o -> o.getKey())
+							.map(o -> o.getValue().getLeft())
 							.collect(Collectors.toCollection(ArrayList::new));
-					events.entrySet().removeIf(o -> toRemove.contains(o.getKey()));
+					events.entrySet().removeIf(o -> toRemove.contains(o.getValue().getLeft()));
 					return toRemove;
 				})
 				.flatMap(toRemove -> ChannelLogger.logMessageInfo("Found "+toRemove.size()+ ", Events list now contains "+events.size())

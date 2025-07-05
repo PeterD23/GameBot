@@ -41,7 +41,7 @@ public class MeetupLinker {
 	public static Optional<String> getUserByMeetupId(String id) {
 		return verified.entrySet().stream()
 				.filter(entry -> id.equals(entry.getValue()))
-				.map(entry -> entry.getValue())
+				.map(entry -> entry.getKey())
 				.findFirst();
 	}
 	

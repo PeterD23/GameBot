@@ -19,8 +19,8 @@ import discord4j.core.object.component.TopLevelMessageComponent;
 import discord4j.core.object.component.UnfurledMediaItem;
 import discord4j.core.object.reaction.ReactionEmoji;
 import discord4j.rest.util.Color;
-import gamebot.Utils;
 import meetup.api.RsvpUser.RsvpStatus;
+import misc.Utils;
 
 public class MeetupApiResponse {
 
@@ -109,7 +109,7 @@ public class MeetupApiResponse {
 		ArrayList<TopLevelMessageComponent> components = new ArrayList<>();
 		String humanDateTime = LocalDateTime.parse(dateTime, Utils.getDateFormatter()).format(Utils.getHumanReadableDateFormatter());
 		// Basic Event Details
-		components.add(TextDisplay.of("everyone\n# New event just dropped :fire:"));
+		components.add(TextDisplay.of("@everyone\n# New event just dropped :fire:"));
 		components.add(
 				Container.of(Color.RED,
 						Section.of(
