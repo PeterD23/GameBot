@@ -1,5 +1,7 @@
 package misc;
 
+import java.io.File;
+import java.nio.charset.Charset;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.FormatStyle;
@@ -11,6 +13,7 @@ import java.util.Random;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import discord4j.core.object.component.TopLevelMessageComponent;
@@ -56,6 +59,15 @@ public class Utils {
 
 	public static boolean adminsDenied() {
 		return denyAdmins;
+	}
+	
+	public static String readFile(String fileName) {
+		try {
+			return FileUtils.readFileToString(new File(fileName), Charset.defaultCharset());
+		} catch (Exception e) {
+			e.printStackTrace();
+			return "";
+		}
 	}
 	
 	public static String listToSSVString(List<String> list) {

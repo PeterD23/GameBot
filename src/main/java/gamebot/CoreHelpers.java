@@ -61,7 +61,8 @@ public class CoreHelpers {
 		return ChannelLogger.logMessageInfo("Deleting message ID " + messageId + " with reason "+reason)
 				.then(getMessage(channelId, messageId)
 						.flatMap(message -> message.delete(reason)))
-				.then();
+				.then()
+				.onErrorResume(t -> ChannelLogger.logMessageError("Error in Deleting Message "+messageId, t)); // Don't kill the whole Interval Listener, just fail the message
 	}
 
 	protected Mono<Message> sendMessage(long channelId, String content) {

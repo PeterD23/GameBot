@@ -44,7 +44,7 @@ public class RedisConnector {
 	public static RedisClient getRedisClient() {
 		if (redis == null) {
 			redis = RedisClient
-					.create(Builder.redis("192.168.0.225", 6379).withAuthentication("default", "gamebot").build());
+					.create(Builder.redis(Utils.readFile("host").trim(), 6379).withAuthentication("default", "gamebot").build());
 			ow = new ObjectMapper().configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false).writer()
 					.withDefaultPrettyPrinter();
 			om = new ObjectMapper().configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
