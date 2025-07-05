@@ -1,5 +1,7 @@
 package meetup.api;
 
+import java.util.Optional;
+
 import meetup.selenium.MeetupLinker;
 
 public class RsvpUser {
@@ -18,8 +20,8 @@ public class RsvpUser {
 		this.id = id;
 		this.status = status;
 		
-		long userId = MeetupLinker.getUserByMeetupId(Long.parseLong(id));
-		mention = userId != 0L ? ": <@"+userId+">" : "";
+		Optional<String> userId = MeetupLinker.getUserByMeetupId(id);
+		mention = userId.isPresent() ? ": <@"+userId.get()+">" : "";
 	}
 	
 	public boolean isVerified() {

@@ -150,14 +150,14 @@ public class MeetupApiQuerier {
 		return eventIds;
 	}
 
-	public String[] getNameAndImageOfUser(JwtDTO token, long id) {
+	public String[] getNameAndImageOfUser(JwtDTO token, String id) {
 		CloseableHttpClient httpClient = HttpClients.createDefault();
 		try {
 			HttpPost httpPost = new HttpPost("https://api.meetup.com/gql-ext");
 			httpPost.addHeader("Authorization", "Bearer " + token.getAccessToken());
 			httpPost.addHeader("Content-Type", "application/json");
 
-			EventGraphRequestDTO request = new EventGraphRequestDTO(getMemberNameFromId.replace("$memberId", String.valueOf(id)));
+			EventGraphRequestDTO request = new EventGraphRequestDTO(getMemberNameFromId.replace("$memberId", id));
 			String requestAsJson = objectMapper.writeValueAsString(request);
 			HttpEntity stringEntity = new StringEntity(requestAsJson, ContentType.APPLICATION_JSON);
 			httpPost.setEntity(stringEntity);

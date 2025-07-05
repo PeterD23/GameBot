@@ -29,16 +29,12 @@ public class SeleniumDriver {
 
 	private boolean lock = false;
 
-	private static Logger log = Loggers.getLogger("logger");
+	private static Logger log = Loggers.getLogger("seleniumdriver");
 	private WebDriver webDriver;
 	private final String meetupUrl = "https://www.meetup.com/Edinburgh-Local-Video-Gamers/events/";
 	private FluentWait<WebDriver> wait;
 
 	private final String baseXPath = "//div[starts-with(@id, 'e-')]/a";
-	private final String eventName = "//main//h1";
-	private final String eventDate = "//div[contains(@class,'pl-4')]/time";
-	private final String attendeeText = "//div[@id='attendees']/div/h2";
-
 	private static SeleniumDriver instance;
 
 	public static SeleniumDriver getInstance() {
@@ -128,65 +124,23 @@ public class SeleniumDriver {
 		return ids;
 	}
 
-	public long checkCode(String code) {
+	public String checkCode(String code) {
 		lock();
 		String messagesUrl = ("https://www.meetup.com/messages");
-		long meetupId = 0L;
+		String meetupId = "";
 		try {
 			webDriver.get(messagesUrl);
 			Element("//p[text()='"+code+"']").click();
 			Thread.sleep(3000);
 			Element("//div[contains(@class,'styles_messages')]//button").click();
 			String profileUrl = Element("//a[text()='View Profile']").getAttribute("href");
-			meetupId = new Long(extractIdFromMeetupUrl(profileUrl)).longValue();
+			meetupId = extractIdFromMeetupUrl(profileUrl);
 		} catch (Exception e) {
 			ChannelLogger.logMessageError("Error occurred during verification due to ",e);
 		} finally {
 			unlock();
 		}
 		return meetupId;
-	}
-	
-	public ArrayList<MeetupEvent> returnEventData() {
-		lock();
-		ArrayList<MeetupEvent> eventData = new ArrayList<>();
-		try {
-			webDriver.get(meetupUrl);
-			if (!doesElementExist(baseXPath, "Checking to see if there are any events"))
-				return eventData;
-			ArrayList<WebElement> cards = Elements(baseXPath);
-			ArrayList<String> urls = new ArrayList<>();
-			for (WebElement card : cards) {
-				ChannelLogger.logMessageInfo("Adding card to list...");
-				urls.add(getEventUrl(card));
-			}
-			for (String url : urls) {
-				log.info("Resolving URL " + url);
-				ChannelLogger.logMessageInfo("Resolving URL " + url.replace("https://www.", ""));
-				webDriver.get(url);
-				eventData.add(compileEvent(url));
-				webDriver.get(meetupUrl);
-				ChannelLogger.logMessageInfo("Successfully compiled event");
-			}
-			return eventData;
-		} catch (Exception e) {
-			ChannelLogger.logHighPriorityMessage("Failed to compile full event data.", e);
-			return eventData;
-		} finally {
-			unlock();
-		}
-	}
-
-	private MeetupEvent compileEvent(String eventUrl) {
-		MeetupEvent event = new MeetupEvent();
-		try {
-			String eventId = extractIdFromMeetupUrl(eventUrl);
-			event.addId(eventId).addUrl(eventUrl).addName(TextOf(eventName)).addDate(TextOf(eventDate))
-					.addCurrentAttendees(TextOf(attendeeText));
-		} catch (Exception e) {
-			ChannelLogger.logHighPriorityMessage("Failed to compile event.", e);
-		}
-		return event;
 	}
 
 	private boolean doesElementExist(String xpath, String reason) {
@@ -205,10 +159,6 @@ public class SeleniumDriver {
 
 	private String getEventUrl(WebElement element) {
 		return element.getAttribute("href");
-	}
-
-	private String TextOf(String xpath) {
-		return Element(xpath).getText();
 	}
 
 	private ArrayList<WebElement> Elements(String xpath) {

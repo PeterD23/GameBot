@@ -70,10 +70,14 @@ public class MeetupApiResponse {
 		}
 	}
 
+	private String rsvpString() {
+		return Integer.parseInt(maxTickets) > 0 ? "("+yesCount+"/"+maxTickets+")" : "("+yesCount+")";
+	}
+	
 	public boolean canRsvp() {
 		int currentRsvps = Integer.parseInt(yesCount);
 		int maxRsvps = Integer.parseInt(maxTickets);
-		return currentRsvps < maxRsvps; 
+		return currentRsvps < maxRsvps || maxRsvps == 0; 
 	}
 	
 	public String getDateTime() {
@@ -113,7 +117,7 @@ public class MeetupApiResponse {
 								TextDisplay.of("# "+title),
 								TextDisplay.of(description)
 								),
-						ActionRow.of(Button.primary("rsvp_"+id, "RSVP ("+yesCount+"/"+maxTickets+")").disabled(!canRsvp()))
+						ActionRow.of(Button.primary("rsvp_"+id, "RSVP "+rsvpString()).disabled(!canRsvp()))
 						)
 				);
 		// Location and Date Time

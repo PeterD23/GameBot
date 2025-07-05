@@ -4,6 +4,7 @@ import discord4j.core.event.domain.guild.GuildCreateEvent;
 import discord4j.core.event.domain.guild.MemberJoinEvent;
 import discord4j.core.event.domain.interaction.ButtonInteractionEvent;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
+import discord4j.core.event.domain.interaction.MessageInteractionEvent;
 import discord4j.core.event.domain.interaction.ModalSubmitInteractionEvent;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.event.domain.message.MessageUpdateEvent;
@@ -36,6 +37,10 @@ public interface IListener {
 	}
 
 	default public Mono<?> onCommand(ButtonInteractionEvent event) {
+		return Mono.empty();
+	}
+	
+	default public Mono<?> onMessageInteraction(MessageInteractionEvent event){
 		return Mono.empty();
 	}
 	

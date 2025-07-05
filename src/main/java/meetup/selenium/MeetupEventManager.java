@@ -1,78 +1,61 @@
 package meetup.selenium;
 
 import java.io.File;
-import java.io.IOException;
-import java.nio.charset.Charset;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
-import java.util.List;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.stream.Collectors;
 
-import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.tuple.Pair;
 
 import gamebot.ChannelLogger;
 import gamebot.Utils;
+import misc.RedisConnector;
 import reactor.core.publisher.Mono;
 
 public class MeetupEventManager {
 
-	private static ArrayList<Tuple<String, String, String>> events;
+	private static String key = "gamebot:MeetupEvents";
+	private static HashMap<String, Pair<String, String>> events = new HashMap<>();
 	
 	public static Mono<Void> init() {
-		return Mono.fromRunnable(() -> {
-			events = new ArrayList<>();
-			readEventData();
-		});
+		return RedisConnector.cacheFile(new File("events"), key)
+				.flatMap(map -> {
+					map.forEach((k, v) -> events.put(k, Pair.of(v.split(" ")[0], v.split(" ")[1])));
+					return Mono.empty();
+				}).then();
 	}
 	
-	public static void addEvent(String eventId, String messageId, String timeToDelete) {
-		events.add(new Tuple<>(eventId, messageId, timeToDelete));
-		saveEventData();
+	public static Mono<Void> addEvent(String messageId, String eventId, String timeToDelete) {
+		Pair<String, String> pair = Pair.of(eventId, timeToDelete);
+		events.put(messageId, pair);
+		return RedisConnector.cacheEntry(key, Pair.of(messageId, Arrays.asList(eventId, timeToDelete)));
 	}
 	
-	public static ArrayList<String> scheduleMessagesForDeletion() {
-		ChannelLogger.logMessageInfo("Scheduling past events for deletion...");
-		ZonedDateTime time = ZonedDateTime.now();
-		ArrayList<String> toRemove = events.stream().filter(o -> {
-			ZonedDateTime check = ZonedDateTime.parse(o.third(), Utils.getDateFormatter()).plusHours(16);
-			return time.compareTo(check) > 0; 
-		}).map(o -> o.second()).collect(Collectors.toCollection(ArrayList::new));
-		events.removeIf(o -> toRemove.contains(o.second()));
-		ChannelLogger.logMessageInfo("Found "+toRemove.size()+ ", Events list now contains "+events.size());
-		saveEventData();
-		return toRemove;
-	}
-	
-	private static void readEventData() {
-		events.clear();
-		try {
-			List<String> lines = FileUtils.readLines(new File("events"), Charset.defaultCharset());
-			for (String line : lines) {
-				String[] data = line.split(" ");
-				events.add(new Tuple<>(data[0], data[1], data[2]));
-			}
-		} catch (IOException e) {
-			ChannelLogger.logMessageError("Failed to read file ./events", e);
-		}
-	}
-	
-	private static void saveEventData() {
-		ArrayList<String> lines = new ArrayList<>();
-		for (Tuple<String, String, String> event : events) {
-			lines.add(String.join(" ", event.first(), event.second(), event.third()));
-		}
-		try {
-			FileUtils.writeLines(new File("events"), lines);
-		} catch (IOException e) {
-			ChannelLogger.logMessageError("Failed to save events to file ./events", e);
-		}
+	public static Mono<ArrayList<String>> scheduleMessagesForDeletion() {
+		return ChannelLogger.logMessageInfo("Scheduling past events for deletion...")
+				.then(Mono.fromCallable(() -> {
+					ZonedDateTime time = ZonedDateTime.now();
+					ArrayList<String> toRemove = events.entrySet().stream()
+							.filter(entry -> {
+								Pair<String, String> data = entry.getValue();
+								ZonedDateTime check = ZonedDateTime.parse(data.getRight(), Utils.getDateFormatter()).plusHours(16);
+								return time.compareTo(check) > 0; 
+							})
+							.map(o -> o.getKey())
+							.collect(Collectors.toCollection(ArrayList::new));
+					events.entrySet().removeIf(o -> toRemove.contains(o.getKey()));
+					return toRemove;
+				})
+				.flatMap(toRemove -> ChannelLogger.logMessageInfo("Found "+toRemove.size()+ ", Events list now contains "+events.size())
+					.then(RedisConnector.deleteEntry(key, toRemove.toArray(new String[0])))
+					.then(Mono.just(toRemove))));
 	}
 	
 	public static String hasEvent(String eventId) {
-		return events.stream().filter(o -> o.first().equals(eventId)).map(o -> o.second()).findFirst().orElse(""); 
-	}
-
-	public static String hasEvent(MeetupEvent event) {
-		return events.stream().filter(o -> o.first().equals(event.getID())).map(o -> o.second()).findFirst().orElse(""); 
+		return events.entrySet().stream()
+				.filter(o -> o.getKey().equals(eventId))
+				.map(o -> o.getValue().getLeft()).findFirst().orElse(""); 
 	}
 }

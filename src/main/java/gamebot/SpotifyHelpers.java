@@ -15,7 +15,7 @@ import reactor.util.Loggers;
 
 public class SpotifyHelpers extends CoreHelpers {
 
-	private static Logger log = Loggers.getLogger("logger");
+	private static Logger log = Loggers.getLogger("spotify");
 	private static SpotifyApi api;
 
 	public static Mono<Void> init(String clientId, String clientSecret) {

@@ -3,8 +3,6 @@ package gamebot.commands;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import discord4j.common.util.Snowflake;
-import discord4j.core.GatewayDiscordClient;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.event.domain.interaction.ModalSubmitInteractionEvent;
 import discord4j.core.object.command.ApplicationCommandOption;
@@ -17,14 +15,11 @@ import discord4j.core.spec.PollCreateSpec;
 import discord4j.discordjson.json.ApplicationCommandOptionChoiceData;
 import discord4j.discordjson.json.ApplicationCommandOptionData;
 import discord4j.discordjson.json.ApplicationCommandRequest;
-import gamebot.GameBot;
+import discord4j.discordjson.json.ImmutableApplicationCommandRequest;
 import reactor.core.publisher.Mono;
 
 public class PollCommand implements ISlashCommand {
 
-	private long guildId = GameBot.SERVER;
-	private long POLL_WATCHER = 908032897762619433L;
-	private String pollWatcherMention = "";
 	public static PollCommand command;
 
 	public static PollCommand get() {
@@ -33,13 +28,12 @@ public class PollCommand implements ISlashCommand {
 		}
 		return command;
 	}
-	
+
 	public String desc() {
-		return "**/poll** Create a Discord poll. **expiry** is required from a dropdown list of options"; 
+		return "**/poll** Create a Discord poll. **expiry** is required from a dropdown list of options";
 	}
 
-	// Non-blocking solution
-	public PollCommand() {
+	public ImmutableApplicationCommandRequest getCommandRequest() {
 		ArrayList<ApplicationCommandOptionChoiceData> choices = new ArrayList<>();
 		choices.add(ApplicationCommandOptionChoiceData.builder().name("12 hours").value(12).build());
 		choices.add(ApplicationCommandOptionChoiceData.builder().name("1 day").value(24).build());
@@ -47,22 +41,12 @@ public class PollCommand implements ISlashCommand {
 		choices.add(ApplicationCommandOptionChoiceData.builder().name("14 days").value(336).build());
 		choices.add(ApplicationCommandOptionChoiceData.builder().name("1 month").value(768).build());
 		
-		ApplicationCommandRequest pollRequest = ApplicationCommandRequest.builder().name("poll")
-				.description("Creates a poll.")
-				.addOption(ApplicationCommandOptionData.builder().name("expiry").description("How many hours should the poll last?")
-						.type(ApplicationCommandOption.Type.INTEGER.getValue()).required(true).choices(choices).build())
-				.build();
-		
-		GatewayDiscordClient client = GameBot.gateway;
-		client.getGuildById(Snowflake.of(guildId))
-		.flatMap(guild -> guild.getRoles()
-				.filter(p -> p.getId().asLong() == POLL_WATCHER)
-				.next()
-				.flatMap(role -> Mono.fromRunnable(() -> pollWatcherMention = role.getMention()))
-				.then())
-		.then(client.getRestClient().getApplicationId())
-		.flatMap(id -> client.getRestClient().getApplicationService().createGuildApplicationCommand(id, guildId, pollRequest))
-		.subscribe();
+		return ApplicationCommandRequest.builder().name("poll").description("Creates a poll.")
+						.addOption(ApplicationCommandOptionData.builder().name("expiry")
+								.description("How many hours should the poll last?")
+								.type(ApplicationCommandOption.Type.INTEGER.getValue()).required(true).choices(choices)
+								.build())
+						.build();
 	}
 
 	@Override
@@ -71,8 +55,9 @@ public class PollCommand implements ISlashCommand {
 		InteractionPresentModalSpec.Builder modalBuilder = InteractionPresentModalSpec.builder()
 				.title("Poll the audience!").customId("poll")
 				.addComponent(ActionRow.of(TextInput.small("title", "Insert your question here").required()))
-				.addComponent(ActionRow.of(TextInput.paragraph(expiry, "options", "Put options here, add a new line for each one")));
-		 
+				.addComponent(ActionRow
+						.of(TextInput.paragraph(expiry, "options", "Put options here, add a new line for each one")));
+
 		return event.presentModal(modalBuilder.build());
 	}
 
@@ -81,24 +66,25 @@ public class PollCommand implements ISlashCommand {
 		ArrayList<TextInput> components = new ArrayList<>(event.getComponents(TextInput.class));
 		String question = components.get(0).getValue().orElse("Oopsie");
 		String[] optionsArray = components.get(1).getValue().orElse("").split("\n");
-		ArrayList<String> options = optionsArray[0].isEmpty() ? new ArrayList<>() : new ArrayList<>(Arrays.asList(optionsArray));
-		
+		ArrayList<String> options = optionsArray[0].isEmpty() ? new ArrayList<>()
+				: new ArrayList<>(Arrays.asList(optionsArray));
+
 		ArrayList<PollAnswer> answers = new ArrayList<>();
-		for(String option : options) {
+		for (String option : options) {
 			PollAnswer answer = PollAnswer.of(option);
 			answers.add(answer);
 		}
 		// Fallback if poll has no questions
-		if(answers.isEmpty()) {
+		if (answers.isEmpty()) {
 			answers.add(PollAnswer.of("Yes"));
 			answers.add(PollAnswer.of("No"));
 		}
-		int expiry = components.get(1).getId();	
-		PollCreateSpec pollCreateSpec = PollCreateSpec.builder().question(question).allowMultiselect(true).addAllAnswers(answers).duration(expiry).build();
+		int expiry = components.get(1).getId();
+		PollCreateSpec pollCreateSpec = PollCreateSpec.builder().question(question).allowMultiselect(true)
+				.addAllAnswers(answers).duration(expiry).build();
 		Mono<MessageChannel> channel = event.getInteraction().getChannel();
-		return event.reply("Question time, folks... "+pollWatcherMention)
+		return event.reply("Question time, folks... <@&908032897762619433>")
 				.then(channel.flatMap(chn -> chn.createPoll(pollCreateSpec)))
-				.flatMap(poll -> channel.flatMap(chnb -> chnb.getMessageById(poll.getId())))
-				.flatMap(msg -> msg.pin());
+				.flatMap(poll -> channel.flatMap(chnb -> chnb.getMessageById(poll.getId()))).flatMap(msg -> msg.pin());
 	}
 }

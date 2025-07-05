@@ -8,7 +8,6 @@ import java.util.Optional;
 import org.apache.commons.io.FileUtils;
 
 import discord4j.common.util.Snowflake;
-import discord4j.core.GatewayDiscordClient;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.object.command.ApplicationCommandOption;
 import discord4j.core.object.component.Container;
@@ -21,6 +20,7 @@ import discord4j.core.object.entity.channel.Channel;
 import discord4j.core.object.entity.channel.TextChannel;
 import discord4j.discordjson.json.ApplicationCommandOptionData;
 import discord4j.discordjson.json.ApplicationCommandRequest;
+import discord4j.discordjson.json.ImmutableApplicationCommandRequest;
 import gamebot.ChannelLogger;
 import gamebot.GameBot;
 import gamebot.commands.ISlashCommand;
@@ -28,7 +28,6 @@ import reactor.core.publisher.Mono;
 
 public class ReadCommand implements ISlashCommand {
 
-	private long guildId = GameBot.SERVER;
 	public static ReadCommand command;
 
 	public static ReadCommand get() {
@@ -45,21 +44,13 @@ public class ReadCommand implements ISlashCommand {
 		}).then();
 	}
 
-	public ReadCommand() {
-		ApplicationCommandRequest readRequest = ApplicationCommandRequest.builder().name("read")
-				.description("Read contents for a file")
+	public ImmutableApplicationCommandRequest getCommandRequest() {
+		return ApplicationCommandRequest.builder().name("read").description("Read contents for a file")
 				.addOption(ApplicationCommandOptionData.builder().name("filename").description("File name to read")
 						.type(ApplicationCommandOption.Type.STRING.getValue()).required(true).build())
 				.addOption(ApplicationCommandOptionData.builder().name("cc_channel").description("CC to this channel")
 						.type(ApplicationCommandOption.Type.CHANNEL.getValue()).required(false).build())
 				.build();
-		
-		GatewayDiscordClient client = GameBot.gateway;
-		client.getRestClient().getApplicationId()
-			.flatMap(applicationId -> 
-				client.getRestClient().getApplicationService()
-					.createGuildApplicationCommand(applicationId, guildId, readRequest))
-			.subscribe();
 	}
 
 	@Override
@@ -78,8 +69,8 @@ public class ReadCommand implements ISlashCommand {
 				return event.editReply().withComponents(component);
 			}).doOnError(err -> event.editReply("Outer loop broken")).then();
 		} catch (Exception e) {
-			ChannelLogger.logMessageError("Unable to find file '"+fileName+"' due to ", e);
-			return event.reply("Cannot load the file: "+e.getMessage()).withEphemeral(true);
+			ChannelLogger.logMessageError("Unable to find file '" + fileName + "' due to ", e);
+			return event.reply("Cannot load the file: " + e.getMessage()).withEphemeral(true);
 		}
 	}
 
