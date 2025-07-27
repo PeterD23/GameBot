@@ -184,6 +184,12 @@ public class RedisConnector {
 			return reactiveConnect().hset(key, map).then(Mono.fromCallable(() -> transformMaptoHashMapOfN(map)));
 		});
 	}
+	
+	public static Mono<HashMap<String, String>> readAllFields(String key){
+		return reactiveConnect().hgetall(key)
+				.collectMap(item -> item.getKey(), item -> item.getValue())
+				.map(RedisConnector::transformMaptoHashMapOfN);
+	}
 
 	private static HashMap<String, String> transformMaptoHashMapOfN(Map<String, String> map) {
 		HashMap<String, String> hash = new HashMap<>();
