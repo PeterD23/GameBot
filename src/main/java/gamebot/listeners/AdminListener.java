@@ -306,7 +306,6 @@ public class AdminListener extends CoreHelpers implements IListener {
 
 		try {
 			ArrayList<String> eventIds = meetupApi.getUpcomingEvents(token);
-			ChannelLogger.logMessageInfo("Found " + eventIds.size() + " events from Meetup");
 			return Mono.when(Flux.fromIterable(eventIds)
 					.flatMap(eventId -> Mono.fromCallable(() -> meetupApi.getEventDetails(token, eventId)).flatMap(
 							event -> Mono.zip(Mono.just(event), Mono.just(MeetupEventManager.hasEvent(eventId))))
@@ -323,8 +322,7 @@ public class AdminListener extends CoreHelpers implements IListener {
 
 	private Mono<Void> sendMessageIfValid(String eventId, MeetupApiResponse event) {
 		return sendMessage(EvgIds.MEETUP_CHANNEL.id(), event.build())
-				.flatMap(message -> message.pin().then(Mono.fromRunnable(
-						() -> MeetupEventManager.addEvent(eventId, message.getId().asString(), event.getDateTime()))))
+				.flatMap(message -> message.pin().then(MeetupEventManager.addEvent(eventId, message.getId().asString(), event.getDateTime())))
 				.then(ChannelLogger.logMessageInfo("Added new pinned event to Event List"));
 	}
 }

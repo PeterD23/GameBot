@@ -2,10 +2,6 @@ package gamebot;
 
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.concurrent.TimeoutException;
-import java.util.function.Function;
-
-import org.reactivestreams.Publisher;
 
 import discord4j.common.store.Store;
 import discord4j.common.store.legacy.LegacyStoreLayout;
@@ -15,7 +11,6 @@ import discord4j.core.event.domain.guild.GuildCreateEvent;
 import discord4j.core.event.domain.guild.MemberJoinEvent;
 import discord4j.core.event.domain.interaction.ButtonInteractionEvent;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
-import discord4j.core.event.domain.interaction.ComponentInteractionEvent;
 import discord4j.core.event.domain.interaction.MessageInteractionEvent;
 import discord4j.core.event.domain.interaction.ModalSubmitInteractionEvent;
 import discord4j.core.event.domain.message.MessageCreateEvent;
@@ -73,14 +68,6 @@ public class GameBot {
 				.then(gateway.onDisconnect()).block();
 		
 		redis.close();
-	}
-	
-	public static <E extends ComponentInteractionEvent, T> void createTempInteraction(Class<E> event,
-			Function<E, Publisher<T>> function, Duration timeout) {
-		String callerMethod = Thread.currentThread().getStackTrace()[2].getMethodName();
-		ChannelLogger.logMessageInfo("Creating new temp listener for " + event.getTypeName() + " from " + callerMethod);
-		gateway.on(event, function).timeout(timeout).then().onErrorResume(TimeoutException.class,
-			ignore -> ChannelLogger.logMessageWarning("Timeout: " + event.getTypeName() + " from " + callerMethod));
 	}
 
 	// Mono.when() is used on Flux.fromIterable because listeners is a list of two

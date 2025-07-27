@@ -18,6 +18,7 @@ import discord4j.discordjson.json.ApplicationCommandOptionData;
 import discord4j.discordjson.json.ApplicationCommandRequest;
 import discord4j.discordjson.json.ImmutableApplicationCommandRequest;
 import discord4j.rest.util.Color;
+import gamebot.ChannelLogger;
 import gamebot.GameBot;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
@@ -58,6 +59,7 @@ public class TrustCommand implements ISlashCommand {
 		Member self = event.getInteraction().getMember().get();
 		return event.deferReply()
 				.withEphemeral(!admin)
+				.then(ChannelLogger.logMessageInfo("Member "+self.getId().asString()+" used /trust command"))
 				.then(event.getOption("user").isPresent()
 						? event.getOptionAsUser("user")
 								.flatMap(option -> option.asMember(Snowflake.of(GameBot.SERVER),
@@ -65,7 +67,12 @@ public class TrustCommand implements ISlashCommand {
 						: Mono.just(self))
 				.flatMap(member -> trust.getServerFactors(member).zipWith(trust.getTrustFactors(member))
 					.flatMap(pair -> event.editReply().withComponents(constructMessage(member, pair))))
-				.then();
+				.switchIfEmpty(event.editReply().withComponents(TextDisplay.of("I was unable to get your trust factor.")))
+				.then()
+				.onErrorResume(t -> ChannelLogger.logMessageError("Error occurred during trust command: ", t)
+						.then(event.editReply().withComponents(TextDisplay.of("Something went wrong.")))
+						.then())
+				.log("TrustCommand");
 	}
 
 	private TopLevelMessageComponent constructMessage(Member member, Tuple2<List<TrustFactor>, List<TrustFactor>> factors) {
@@ -73,7 +80,7 @@ public class TrustCommand implements ISlashCommand {
 		totalFactors.addAll(factors.getT2()); 
 		
 		// Map all factor pairs into a string
-		List<String> stringedFactors = totalFactors.stream().map(factor -> factor.reason + ": " + factor.score)
+		List<String> stringedFactors = totalFactors.stream().filter(factor -> !factor.isEmpty()).map(factor -> factor.reason + ": " + factor.score)
 				.collect(Collectors.toList());
 
 		// Sum all factors into a final trust score

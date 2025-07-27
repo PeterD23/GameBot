@@ -3,6 +3,7 @@ package gamebot.commands;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.TimeoutException;
 
 import org.apache.commons.lang3.RandomStringUtils;
 
@@ -61,17 +62,18 @@ public class LinkMeetupCommand implements ISlashCommand {
 
 	@Override
 	public Mono<Void> submitCommand(ChatInputInteractionEvent event) {
+		GameBot.gateway.on(ButtonInteractionEvent.class, click -> onButtonClick(click))
+		.timeout(Duration.ofMinutes(5)).onErrorResume(TimeoutException.class, ignore -> Mono.empty()).then()
+		.subscribe();
+		
 		String title = "Hi! You've requested to link your Meetup account to your Discord! Here's what to do:";
 		Member member = event.getInteraction().getMember().get();
 		String userId = member.getId().asString();
 		MeetupLinker.queueUser(userId, RandomStringUtils.randomAlphanumeric(5));
 		if (MeetupLinker.isQueued(userId)) {
 			String code = MeetupLinker.getUsersCode(userId);
-			return event.deferReply().withEphemeral(true).then(Mono.fromRunnable(() -> {
-				// Register a listener for the button
-				GameBot.createTempInteraction(ButtonInteractionEvent.class, click -> onButtonClick(click),
-						Duration.ofMinutes(5));
-			})).then(event.editReply().withComponentsOrNull(constructMessage(code, title, Color.GREEN)).then());
+			return event.deferReply().withEphemeral(true)
+					.then(event.editReply().withComponentsOrNull(constructMessage(code, title, Color.GREEN)).then());
 		}
 		return event.reply("You appear to already be Meetup verified!").withEphemeral(true);
 	}
@@ -100,7 +102,7 @@ public class LinkMeetupCommand implements ISlashCommand {
 							.flatMap(components -> event.editReply().withComponentsOrNull(components)).then();
 				}
 				return member.addRole(Snowflake.of(MEETUP_VERIFIED))
-						.then(Mono.fromRunnable(() -> MeetupLinker.linkUserToMeetup(userId, meetupId)))
+						.then(MeetupLinker.linkUserToMeetup(userId, meetupId))
 						.then(event.deleteReply()).then(event.getInteraction().getChannel())
 						.ofType(MessageChannel.class)
 						.flatMap(channel -> channel.createMessage("Congrats " + member.getMention()

@@ -1,6 +1,8 @@
 package gamebot;
 
-import discord4j.common.util.Snowflake;
+import static gamebot.EvgIds.LOG_CHANNEL;
+import static gamebot.EvgIds.PETE_MEMBER;
+
 import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.channel.TextChannel;
@@ -11,18 +13,17 @@ import reactor.util.Loggers;
 public class ChannelLogger {
 
 	// Change ME to the user that should be pinged if something bad happens
-	private static long ME = 97036843924598784L;
+	private static long ME = PETE_MEMBER.id();
 	private static Member userToPing;
 
 	private static TextChannel logChannel;
-	public static long LOG = 902582146437349456L;
 	private static Logger log = Loggers.getLogger("clogger");
 	private static int maxStackLength = 8;
 
 	private static boolean traceMode = false;
 
 	public static Mono<TextChannel> init(Guild guild) {
-		return guild.getChannelById(Snowflake.of(LOG)).ofType(TextChannel.class).flatMap(channel -> {
+		return guild.getChannelById(LOG_CHANNEL.snow()).ofType(TextChannel.class).flatMap(channel -> {
 			logChannel = channel;
 			return guild.getMembers().filter(p -> p.getId().asLong() == ME).next()
 					.flatMap(member -> Mono.fromRunnable(() -> userToPing = member))

@@ -88,7 +88,7 @@ public class CoreHelpers {
 	
 	protected Mono<Void> editMessage(long channelId, long messageId, ArrayList<TopLevelMessageComponent> components) {
 		int length = components.stream().mapToInt(component -> Utils.recursiveLength(component.getData())).sum();
-		return ChannelLogger.logMessageInfo("Editing message ID " + messageId + " with String of length " + length)
+		return ChannelLogger.logMessageTrace("Editing message ID " + messageId + " with String of length " + length)
 				.then(getMessage(channelId, messageId)
 						.flatMap(message -> message.edit().withContentOrNull(null)
 								.withComponentsOrNull(components)
