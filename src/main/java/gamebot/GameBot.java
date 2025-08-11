@@ -3,6 +3,9 @@ package gamebot;
 import java.time.Duration;
 import java.util.ArrayList;
 
+import org.slf4j.LoggerFactory;
+
+import ch.qos.logback.classic.Logger;
 import discord4j.common.store.Store;
 import discord4j.common.store.legacy.LegacyStoreLayout;
 import discord4j.core.DiscordClient;
@@ -25,7 +28,6 @@ import meetup.selenium.MeetupEventManager;
 import misc.RedisConnector;
 import misc.SpotifyHelpers;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Hooks;
 import reactor.core.publisher.Mono;
 import reactor.util.Loggers;
 
@@ -50,24 +52,30 @@ public class GameBot {
 		if (args.length == 0)
 			throw new IllegalArgumentException("Please enter a client key.");
 
+		LoggerFactory.getLogger("init").info("SLF4J bound to Logback");
 		AdminListener admin = new AdminListener();
 		listeners.add(admin);
 		listeners.add(new UserListener());
 
 		@SuppressWarnings("resource")
 		RedisClient redis = RedisConnector.getRedisClient();
-		
-		Hooks.onOperatorDebug();
+		// Hooks.onOperatorDebug(); Use for debugging
 		DiscordClient client = DiscordClient.create(args[0]);
 		gateway = client.gateway()
 				.setStore(Store.fromLayout(LegacyStoreLayout.of(RedisStoreService.builder().redisClient(redis).build())))
 				.setEnabledIntents(IntentSet.all()).login().block();
 		buildReadyEvent()
-				.then(Mono.when(buildMemberJoinEvent(), buildMessageCreateEvent(), buildMessageInteractionEvent(), buildTimedInterval(admin),
-						buildMessageUpdateEvent(), buildChatInputInteractionEvent(), MeetupEventManager.init(), SpotifyHelpers.init(args[1], args[2])))
-				.then(gateway.onDisconnect()).block();
-		
-		redis.close();
+				.then(Mono.when(buildMemberJoinEvent(), 
+						buildMessageCreateEvent(), 
+						buildMessageInteractionEvent(), 
+						buildTimedInterval(admin),
+						buildMessageUpdateEvent(), 
+						buildChatInputInteractionEvent(), 
+						MeetupEventManager.init(), 
+						SpotifyHelpers.init(args[1], args[2])))
+				.then(gateway.onDisconnect()
+						.then(Mono.fromRunnable(() -> redis.shutdown())))
+				.block();
 	}
 
 	// Mono.when() is used on Flux.fromIterable because listeners is a list of two

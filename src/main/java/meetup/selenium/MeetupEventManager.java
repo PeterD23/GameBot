@@ -34,7 +34,10 @@ public class MeetupEventManager {
 		return RedisConnector.cacheEntry(key, Pair.of(eventId, Arrays.asList(messageId, timeToDelete)));
 	}
 	
-	public static Mono<ArrayList<String>> scheduleMessagesForDeletion() {
+	public static Mono<ArrayList<String>> scheduleMessagesForDeletion(int minute) {
+		if(minute % 15 != 0) { // Limit deletions to every 15 minutes
+			return Mono.empty();
+		}
 		return ChannelLogger.logMessageInfo("Scheduling past events for deletion...")
 				.then(Mono.fromCallable(() -> {
 					ZonedDateTime time = ZonedDateTime.now();

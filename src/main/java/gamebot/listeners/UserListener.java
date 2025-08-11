@@ -48,7 +48,7 @@ public class UserListener extends CoreHelpers implements IListener {
 	private TrustSystem trust = TrustSystem.get();
 
 	public Mono<?> onReady(GuildCreateEvent event) {
-		return init(event).then(MeetupLinker.readVerified()).then(SubscribeCommand.get().readGenres()).then(Birthday.readBirthdays()).then(Mono.fromRunnable(() -> initialiseCommands()));
+		return init(event).then(Mono.fromRunnable(() -> initialiseCommands()).then(MeetupLinker.readVerified()).then(SubscribeCommand.get().readGenres()).then(Birthday.readBirthdays()));
 	}
 
 	public Mono<?> onMessage(MessageCreateEvent event) {

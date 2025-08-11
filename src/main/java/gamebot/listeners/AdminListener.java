@@ -256,7 +256,8 @@ public class AdminListener extends CoreHelpers implements IListener {
 		if (time.getHour() == 12 && time.getMinute() == 0) {
 			return recommendSong().then(birthdayCheck());
 		} else if (time.getMinute() % fetchFrequency == 0) {
-			return fetchEventDataFromApi().then(MeetupEventManager.scheduleMessagesForDeletion())
+			return fetchEventDataFromApi()
+					.then(MeetupEventManager.scheduleMessagesForDeletion(time.getMinute()))
 					.flatMapMany(list -> Flux.fromIterable(list))
 					.flatMap(pastEvent -> ChannelLogger.logMessageInfo("Deleting Past Event ID " + pastEvent).then(
 							deleteMessage(EvgIds.MEETUP_CHANNEL.id(), Long.parseLong(pastEvent), "Expired Event")))
@@ -299,8 +300,7 @@ public class AdminListener extends CoreHelpers implements IListener {
 	}
 
 	private Mono<Void> fetchEventDataFromApi() {
-		log.info("Fetching events from Meetup");
-		ChannelLogger.logMessageInfo("Fetching events from Meetup API, time is " + LocalTime.now().toString());
+		log.info("Fetching events from Meetup API, time is " + LocalTime.now().toString());
 		MeetupApiQuerier meetupApi = new MeetupApiQuerier();
 		JwtDTO token = meetupApi.generateApiToken();
 
@@ -310,7 +310,7 @@ public class AdminListener extends CoreHelpers implements IListener {
 					.flatMap(eventId -> Mono.fromCallable(() -> meetupApi.getEventDetails(token, eventId)).flatMap(
 							event -> Mono.zip(Mono.just(event), Mono.just(MeetupEventManager.hasEvent(eventId))))
 							.flatMap(tuple -> {
-								return tuple.getT2() != "" ? editMessage(EvgIds.MEETUP_CHANNEL.id(),
+								return !tuple.getT2().equals("") ? editMessage(EvgIds.MEETUP_CHANNEL.id(),
 										Long.parseLong(tuple.getT2()), tuple.getT1().build())
 										: sendMessageIfValid(eventId, tuple.getT1());
 							})));

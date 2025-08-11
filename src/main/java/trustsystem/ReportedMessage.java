@@ -34,7 +34,7 @@ public class ReportedMessage {
 		String data = "";
 		if(!messageContent.isEmpty())
 			data += "`"+messageContent+"`\n";
-		if(imageUrl.size() > 0);
+		if(imageUrl.size() > 0)
 			data += String.join("\n", imageUrl);
 		return data;
 	}

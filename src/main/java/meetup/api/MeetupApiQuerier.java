@@ -87,9 +87,7 @@ public class MeetupApiQuerier {
 	}
 
 	public JwtDTO getJwt() throws IOException {
-
 		String signedJwt = JWTGenerator.encodeJwtWithRsa(clientId);
-		System.out.println(signedJwt);
 
 		CloseableHttpClient httpClient = HttpClients.createDefault();
 		HttpPost httpPost = new HttpPost("https://secure.meetup.com/oauth2/access");

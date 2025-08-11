@@ -30,13 +30,11 @@ import misc.MessageCache.PartialMessage;
 import reactor.core.Exceptions;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.util.Logger;
-import reactor.util.Loggers;
 
 public class RedisConnector {
 
-	public static RedisClient redis;
-	private static Logger log = Loggers.getLogger("redis");
+	private static RedisClient redis;
+	private static StatefulRedisConnection<String, String> connection;
 
 	private static ObjectWriter ow;
 	private static ObjectMapper om;
@@ -44,7 +42,9 @@ public class RedisConnector {
 	public static RedisClient getRedisClient() {
 		if (redis == null) {
 			redis = RedisClient
-					.create(Builder.redis(Utils.readFile("host").trim(), 6379).withAuthentication("default", "gamebot").build());
+					.create(Builder.redis(Utils.readFile("host").trim(), 6379)
+							.withAuthentication("default", "gamebot")
+							.build());
 			ow = new ObjectMapper().configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false).writer()
 					.withDefaultPrettyPrinter();
 			om = new ObjectMapper().configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
@@ -52,9 +52,10 @@ public class RedisConnector {
 		return redis;
 	}
 
-	@SuppressWarnings("resource")
 	public static RedisReactiveCommands<String, String> reactiveConnect() {
-		StatefulRedisConnection<String, String> connection = redis.connect();
+		if(connection == null) {
+			connection = redis.connect();
+		} 
 		return connection.reactive();
 	}
 
@@ -171,7 +172,6 @@ public class RedisConnector {
 	}
 
 	public static Mono<HashMap<String, String>> cacheFile(File file, String key) {
-		log.info("Caching key " + key);
 		return Mono.just(file).map(f -> {
 			try {
 				return FileUtils.readLines(f, Charset.defaultCharset());

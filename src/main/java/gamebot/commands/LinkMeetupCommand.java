@@ -69,7 +69,7 @@ public class LinkMeetupCommand implements ISlashCommand {
 		String title = "Hi! You've requested to link your Meetup account to your Discord! Here's what to do:";
 		Member member = event.getInteraction().getMember().get();
 		String userId = member.getId().asString();
-		MeetupLinker.queueUser(userId, RandomStringUtils.randomAlphanumeric(5));
+		MeetupLinker.queueUser(userId, RandomStringUtils.secure().nextAlphanumeric(5));
 		if (MeetupLinker.isQueued(userId)) {
 			String code = MeetupLinker.getUsersCode(userId);
 			return event.deferReply().withEphemeral(true)
