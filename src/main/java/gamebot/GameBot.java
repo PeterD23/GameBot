@@ -1,14 +1,15 @@
 package gamebot;
 
+import java.net.SocketException;
 import java.time.Duration;
 import java.util.ArrayList;
 
 import org.slf4j.LoggerFactory;
 
-import ch.qos.logback.classic.Logger;
 import discord4j.common.store.Store;
 import discord4j.common.store.legacy.LegacyStoreLayout;
 import discord4j.core.DiscordClient;
+import discord4j.core.DiscordClientBuilder;
 import discord4j.core.GatewayDiscordClient;
 import discord4j.core.event.domain.guild.GuildCreateEvent;
 import discord4j.core.event.domain.guild.MemberJoinEvent;
@@ -19,17 +20,21 @@ import discord4j.core.event.domain.interaction.ModalSubmitInteractionEvent;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.event.domain.message.MessageUpdateEvent;
 import discord4j.gateway.intent.IntentSet;
+import discord4j.rest.request.RouteMatcher;
+import discord4j.rest.response.ResponseFunction;
 import discord4j.store.redis.RedisStoreService;
 import gamebot.listeners.AdminListener;
 import gamebot.listeners.IListener;
 import gamebot.listeners.UserListener;
 import io.lettuce.core.RedisClient;
+import io.netty.channel.unix.Errors;
 import meetup.selenium.MeetupEventManager;
 import misc.RedisConnector;
 import misc.SpotifyHelpers;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.Loggers;
+import reactor.util.retry.Retry;
 
 public class GameBot {
 
@@ -60,10 +65,19 @@ public class GameBot {
 		@SuppressWarnings("resource")
 		RedisClient redis = RedisConnector.getRedisClient();
 		// Hooks.onOperatorDebug(); Use for debugging
-		DiscordClient client = DiscordClient.create(args[0]);
+		DiscordClient client = DiscordClientBuilder.create(args[0])
+			    .onClientResponse(ResponseFunction.retryWhen(
+			            RouteMatcher.any(),
+			            Retry.backoff(100, Duration.ofSeconds(2)).filter(throwable ->
+			                throwable instanceof SocketException ||
+			                throwable instanceof Errors.NativeIoException
+			            )
+			        ))
+			        .build();
 		gateway = client.gateway()
 				.setStore(Store.fromLayout(LegacyStoreLayout.of(RedisStoreService.builder().redisClient(redis).build())))
-				.setEnabledIntents(IntentSet.all()).login().block();
+				.setEnabledIntents(IntentSet.all())
+				.login().block();
 		buildReadyEvent()
 				.then(Mono.when(buildMemberJoinEvent(), 
 						buildMessageCreateEvent(), 

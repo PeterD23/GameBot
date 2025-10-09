@@ -35,7 +35,7 @@ public class SeleniumDriver {
 	private FluentWait<WebDriver> wait;
 
 	private final String baseXPath = "//div[starts-with(@id, 'e-')]/a";
-	private static SeleniumDriver instance;
+	private static volatile SeleniumDriver instance;
 
 	public static SeleniumDriver getInstance() {
 		if (instance == null) {

@@ -74,7 +74,7 @@ public class CoreHelpers {
 	
 	protected Mono<Void> sendReply(Message message, String content) {
 		return getChannel(message.getChannelId().asLong()).flatMap(channel ->
-				channel.createMessage(content).withMessageReferenceId(message.getId())).then();
+				channel.createMessage(content).withMessageReference(message.getMessageReference().get().getData())).then();
 	}
 	
 	protected Mono<Message> sendMessage(long channelId, ArrayList<TopLevelMessageComponent> components) {

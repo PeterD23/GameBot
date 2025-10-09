@@ -18,8 +18,8 @@ import discord4j.core.object.component.Separator;
 import discord4j.core.object.component.Separator.SpacingSize;
 import discord4j.core.object.component.TextDisplay;
 import discord4j.core.object.component.TopLevelMessageComponent;
+import discord4j.core.object.emoji.Emoji;
 import discord4j.core.object.entity.channel.TextChannel;
-import discord4j.core.object.reaction.ReactionEmoji;
 import discord4j.core.spec.GuildMemberEditSpec;
 import discord4j.rest.util.Color;
 import gamebot.ChannelLogger;
@@ -120,7 +120,7 @@ public class RecommendedActions {
 				.ofType(TextChannel.class)
 				.flatMap(channel -> channel.getMessageById(reportedMessage.getId())
 						.onErrorResume(t -> Mono.empty())) // If message was deleted beforehand, discard it from the report
-				.flatMap(message -> message.addReaction(ReactionEmoji.codepoints("U+274C"))))
+				.flatMap(message -> message.addReaction(Emoji.codepoints("U+274C"))))
 		.then();
 	}
 	

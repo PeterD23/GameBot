@@ -16,9 +16,9 @@ import discord4j.core.object.component.Container;
 import discord4j.core.object.component.Separator;
 import discord4j.core.object.component.TextDisplay;
 import discord4j.core.object.component.TopLevelMessageComponent;
+import discord4j.core.object.emoji.Emoji;
 import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.channel.MessageChannel;
-import discord4j.core.object.reaction.ReactionEmoji;
 import discord4j.discordjson.json.ApplicationCommandRequest;
 import discord4j.discordjson.json.ImmutableApplicationCommandRequest;
 import discord4j.rest.util.Color;
@@ -33,7 +33,7 @@ public class LinkMeetupCommand implements ISlashCommand {
 	public static LinkMeetupCommand command;
 	private long MEETUP_VERIFIED = 902260032945651774L;
 	private long EVG_LOGO_ID = 1277914506340732949L;
-	private ReactionEmoji evgLogo = ReactionEmoji.custom(Snowflake.of(EVG_LOGO_ID), "evg", false);
+	private Emoji evgLogo = Emoji.custom(Snowflake.of(EVG_LOGO_ID), "evg", false);
 
 	public static LinkMeetupCommand get() {
 		if (command == null) {

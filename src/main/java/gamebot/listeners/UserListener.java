@@ -17,10 +17,10 @@ import discord4j.core.object.component.Container;
 import discord4j.core.object.component.Separator;
 import discord4j.core.object.component.Separator.SpacingSize;
 import discord4j.core.object.component.TextDisplay;
+import discord4j.core.object.emoji.Emoji;
 import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.Message;
 import discord4j.core.object.entity.channel.MessageChannel;
-import discord4j.core.object.reaction.ReactionEmoji;
 import discord4j.discordjson.json.ApplicationCommandRequest;
 import gamebot.ChannelLogger;
 import gamebot.CoreHelpers;
@@ -187,10 +187,13 @@ public class UserListener extends CoreHelpers implements IListener {
 	}
 
 	private Mono<Void> checkVerify(Message message, Member member, boolean isEdit) {
+		if(!message.getChannelId().equals(EvgIds.INTRODUCTIONS_CHANNEL.snow())){
+			return Mono.empty();
+		}
 		int count = message.getContent().split("\\s").length;
 		if (count >= 30) {
 			return member.addRole(EvgIds.VERIFIED_ROLE.snow())
-					.then(message.addReaction(ReactionEmoji.codepoints("U+1F525")))
+					.then(message.addReaction(Emoji.codepoints("U+1F525")))
 					.then(sendReply(message, member.getMention()
 							+ " Cool! I've verified you. You now have access to the rest of the server! You can subscribe to extra channels using the /subscribe command, and use /help if you want to see what other things I can do!"));
 		} else if (!isEdit) {

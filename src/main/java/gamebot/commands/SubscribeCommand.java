@@ -19,8 +19,8 @@ import discord4j.core.object.component.Container;
 import discord4j.core.object.component.SelectMenu;
 import discord4j.core.object.component.Separator;
 import discord4j.core.object.component.TextDisplay;
+import discord4j.core.object.emoji.Emoji;
 import discord4j.core.object.entity.Member;
-import discord4j.core.object.reaction.ReactionEmoji;
 import discord4j.discordjson.json.ApplicationCommandRequest;
 import discord4j.discordjson.json.EmojiData;
 import discord4j.discordjson.json.ImmutableApplicationCommandRequest;
@@ -81,7 +81,7 @@ public class SubscribeCommand implements ISlashCommand {
 		return Flux.fromIterable(genreRoles.entrySet()).checkpoint("Flux.constructRoleMenu").flatMap(entry -> {
 			return getEmojiByName(entry.getKey()).zipWith(getRoleData(entry.getValue()))
 					.map(pair -> SelectMenu.Option.of(pair.getT2().name(), entry.getValue())
-							.withEmoji(ReactionEmoji.of(pair.getT1())).withDefault(hasRole(member, entry.getValue())));
+							.withEmoji(Emoji.of(pair.getT1())).withDefault(hasRole(member, entry.getValue())));
 		}).collectList()
 				.map(options -> SelectMenu.of("role-menu", options).withMinValues(0).withMaxValues(options.size()));
 	}

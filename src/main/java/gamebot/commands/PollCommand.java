@@ -54,7 +54,7 @@ public class PollCommand implements ISlashCommand {
 		int expiry = event.getOptionAsLong("expiry").get().intValue();
 		InteractionPresentModalSpec.Builder modalBuilder = InteractionPresentModalSpec.builder()
 				.title("Poll the audience!").customId("poll")
-				.addComponent(ActionRow.of(TextInput.small("title", "Insert your question here").required()))
+				.addComponent(ActionRow.of(TextInput.small(0, "title", "Insert your question here").required()))
 				.addComponent(ActionRow
 						.of(TextInput.paragraph(expiry, "options", "Put options here, add a new line for each one")));
 

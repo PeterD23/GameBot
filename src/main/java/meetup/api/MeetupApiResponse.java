@@ -17,7 +17,7 @@ import discord4j.core.object.component.Separator.SpacingSize;
 import discord4j.core.object.component.TextDisplay;
 import discord4j.core.object.component.TopLevelMessageComponent;
 import discord4j.core.object.component.UnfurledMediaItem;
-import discord4j.core.object.reaction.ReactionEmoji;
+import discord4j.core.object.emoji.Emoji;
 import discord4j.rest.util.Color;
 import meetup.api.RsvpUser.RsvpStatus;
 import misc.Utils;
@@ -124,7 +124,7 @@ public class MeetupApiResponse {
 		components.add(
 				Container.of(Color.ORANGE,
 						Section.of(
-								Button.link("https://maps.google.com/?q="+latLong, ReactionEmoji.codepoints("U+1F9ED")),
+								Button.link("https://maps.google.com/?q="+latLong, Emoji.codepoints("U+1F9ED")),
 								TextDisplay.of("# "+location), 
 								TextDisplay.of("## "+humanDateTime)
 								),
