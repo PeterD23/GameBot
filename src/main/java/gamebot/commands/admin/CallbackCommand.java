@@ -2,22 +2,20 @@ package gamebot.commands.admin;
 
 import java.util.ArrayList;
 
-import discord4j.core.GatewayDiscordClient;
+import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.object.command.ApplicationCommandOption;
 import discord4j.core.object.entity.Member;
 import discord4j.discordjson.json.ApplicationCommandOptionData;
 import discord4j.discordjson.json.ApplicationCommandRequest;
-import gamebot.ChannelLogger;
-import gamebot.GameBot;
+import discord4j.discordjson.json.ImmutableApplicationCommandRequest;
 import gamebot.ICommand;
-import gamebot.Utils;
 import gamebot.commands.ISlashCommand;
+import misc.Utils;
 import reactor.core.publisher.Mono;
 
 public class CallbackCommand implements ISlashCommand {
 
-	private long guildId = GameBot.SERVER;
 	private ICommand callback;
 	protected long ADMIN_ROLE = 731604497435983992L;
 
@@ -28,7 +26,7 @@ public class CallbackCommand implements ISlashCommand {
 	protected boolean isAdmin(Member usr, ChatInputInteractionEvent event) {
 		if (Utils.adminsDenied() && !event.getCommandName().equals("deny"))
 			return false;
-		return usr.getRoles().any(p -> p.getId().asLong() == ADMIN_ROLE).block().booleanValue();
+		return usr.getRoleIds().contains(Snowflake.of(ADMIN_ROLE));
 	}
 
 	public CallbackCommand(String name, String description) {
@@ -55,19 +53,9 @@ public class CallbackCommand implements ISlashCommand {
 		return this;
 	}
 
-	public CallbackCommand create() {
-		GatewayDiscordClient client = GameBot.gateway;
-		long applicationId = client.getRestClient().getApplicationId().block();
-
-		ApplicationCommandRequest callbackRequest = ApplicationCommandRequest.builder().name(name)
-				.description(description).addAllOptions(options).build();
-
-		client.getRestClient().getApplicationService()
-				.createGuildApplicationCommand(applicationId, guildId, callbackRequest)
-				.then(Mono.fromRunnable(
-						() -> ChannelLogger.logMessageInfo("Successfully registered admin command '" + name + "'")))
-				.subscribe();
-		return this;
+	public ImmutableApplicationCommandRequest getCommandRequest() {
+		return ApplicationCommandRequest.builder().name(name).description(description).addAllOptions(options)
+						.build();
 	}
 
 	@Override

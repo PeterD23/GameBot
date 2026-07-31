@@ -1,14 +1,18 @@
 package meetup.api;
 import com.fasterxml.jackson.annotation.JsonGetter;
 
-public class GraphRequestDTO {
+public class EventGraphRequestDTO {
 
 	private String query;
 	private Variables variables;
 	
-	public GraphRequestDTO(String query, String eventId) {
+	public EventGraphRequestDTO(String query, String eventId) {
 		this.query = query;
 		this.variables = new Variables(eventId);
+	}
+	
+	public EventGraphRequestDTO(String query) {
+		this.query = query;
 	}
 	
 	@JsonGetter("query")
