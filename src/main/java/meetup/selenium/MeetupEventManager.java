@@ -29,7 +29,7 @@ public class MeetupEventManager {
 	}
 	
 	public static Mono<Void> addEvent(String eventId, String messageId, String timeToDelete) {
-		Pair<String, String> pair = Pair.of(eventId, timeToDelete);
+		Pair<String, String> pair = Pair.of(messageId, timeToDelete);
 		events.put(eventId, pair);
 		return RedisConnector.cacheEntry(key, Pair.of(eventId, Arrays.asList(messageId, timeToDelete)));
 	}
