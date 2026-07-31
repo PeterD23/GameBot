@@ -1,6 +1,5 @@
 package meetup.api;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -20,6 +19,8 @@ import com.fasterxml.jackson.core.TreeNode;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import config.ConfigLoader;
+import config.MeetupConfig;
 import gamebot.ChannelLogger;
 
 @SuppressWarnings("resource")
@@ -38,14 +39,10 @@ public class MeetupApiQuerier {
 
 	public MeetupApiQuerier() {
 		objectMapper = new ObjectMapper();
-		try {
-			MeetupConfig config = objectMapper.readValue(new File("meetup.json"), MeetupConfig.class);
-			clientId = config.getClientId();
-			clientSecret = config.getClientSecret();
-			refreshToken = config.getRefreshToken();
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+		MeetupConfig config = ConfigLoader.meetup();
+		clientId = config.getClientId();
+		clientSecret = config.getClientSecret();
+		refreshToken = config.getRefreshToken();
 	}
 
 	public JwtDTO generateApiToken() {

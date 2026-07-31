@@ -11,6 +11,7 @@ import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.Message;
 import discord4j.core.object.entity.channel.TextChannel;
 import discord4j.core.retriever.EntityRetrievalStrategy;
+import discord4j.discordjson.json.MessageReferenceData;
 import discord4j.rest.util.Permission;
 import discord4j.rest.util.PermissionSet;
 import misc.Utils;
@@ -73,8 +74,14 @@ public class CoreHelpers {
 	}
 	
 	protected Mono<Void> sendReply(Message message, String content) {
-		return getChannel(message.getChannelId().asLong()).flatMap(channel ->
-				channel.createMessage(content).withMessageReference(message.getMessageReference().get().getData())).then();
+		return getChannel(message.getChannelId().asLong()).flatMap(channel -> {
+			MessageReferenceData data = MessageReferenceData.builder()
+					.channelId(channel.getId().asLong())
+					.messageId(message.getId().asLong())
+					.build();
+			return channel.createMessage(content).withMessageReference(data);
+		})
+		.then();
 	}
 	
 	protected Mono<Message> sendMessage(long channelId, ArrayList<TopLevelMessageComponent> components) {

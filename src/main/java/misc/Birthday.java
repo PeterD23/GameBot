@@ -10,7 +10,7 @@ import reactor.core.publisher.Mono;
 
 public class Birthday {
 	
-	private static String key = "gamebot:Birthdays";
+	private static String key = "Birthdays";
 	private static HashMap<String, String> birthdays = new HashMap<>();
 	
 	public static Mono<Void> readBirthdays() {

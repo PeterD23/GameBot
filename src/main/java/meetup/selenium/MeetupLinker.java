@@ -12,7 +12,7 @@ public class MeetupLinker {
 
 	// Hey Java Generics, can you fucking please support primitive types so I don't
 	// have to keep boxing and unboxing shit
-	private static String key = "gamebot:MeetupVerifiedMembers";
+	private static String key = "MeetupVerifiedMembers";
 	private static HashMap<String, String> queuedUsers = new HashMap<>();
 	private static HashMap<String, String> verified = new HashMap<>();
 

@@ -82,18 +82,13 @@ public class WatchCommand implements ISlashCommand {
 		String data = event.getCustomId();
 		String watch = data.equals("poll-button") ? "Poll" : "Event";
 		long roleId = data.equals("poll-button") ? POLL_WATCHER : EVENT_WATCHER;
-
-		if (!hasRole(member, roleId)) {
-			return event.deferEdit().then(member.addRole(Snowflake.of(roleId), "Requested by user"))
-					.then(event.editReply("Hey, you will now be pinged whenever a new " + watch + " is created!")
-							.withComponents(ActionRow.of(generatePollButton(member, roleId, true),
-									generateEventButton(member, roleId, true))))
-					.then();
-		}
-		return event.deferEdit().then(member.removeRole(Snowflake.of(roleId), "Requested by user"))
-				.then(event.editReply("Hey, you will no longer be pinged whenever a new " + watch + " is created!")
-						.withComponents(ActionRow.of(generatePollButton(member, roleId, false),
-								generateEventButton(member, roleId, false))))
+		boolean hasRole = hasRole(member, roleId);
+		
+		return event.deferEdit()
+				.then(member.addRole(Snowflake.of(roleId), "Requested by user"))
+				.then(event.editReply("Hey, "+(hasRole ? "you will no longer be pinged":"you will now be pinged")+" whenever a new " + watch + " is created!")
+					.withComponents(ActionRow.of(generatePollButton(member, roleId, !hasRole),
+						generateEventButton(member, roleId, !hasRole))))
 				.then();
-	}
+		}
 }

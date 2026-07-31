@@ -94,7 +94,7 @@ public class AdminListener extends CoreHelpers implements IListener {
 			.collectList()
 			.map(list -> client.getRestClient()
 				.getApplicationService()
-				.bulkOverwriteGuildApplicationCommand(applicationId, GameBot.SERVER, list)))
+				.bulkOverwriteGuildApplicationCommand(applicationId, EvgIds.SERVER.id(), list)))
 		.then(ChannelLogger.logMessageInfo("Admin Commands successfully registered!")).subscribe();
 	}
 	
@@ -103,7 +103,7 @@ public class AdminListener extends CoreHelpers implements IListener {
 		client.getRestClient().getApplicationId().log(Loggers.getLogger("Register Command"))
 		.map(applicationId -> client.getRestClient()
 				.getApplicationService()
-				.createGuildApplicationCommand(applicationId, GameBot.SERVER, command.getCommandRequest()).subscribe()
+				.createGuildApplicationCommand(applicationId, EvgIds.SERVER.id(), command.getCommandRequest()).subscribe()
 		).subscribe();
 	}
 
@@ -249,7 +249,7 @@ public class AdminListener extends CoreHelpers implements IListener {
 
 	public Mono<?> tick() {
 		if (panic) {
-			return Mono.empty();
+			return MeetupEventManager.logNumberOfEntries();
 		}
 		log.info("IntervalListener is currently ticking");
 		LocalTime time = LocalTime.now();
@@ -303,20 +303,20 @@ public class AdminListener extends CoreHelpers implements IListener {
 		log.info("Fetching events from Meetup API, time is " + LocalTime.now().toString());
 		MeetupApiQuerier meetupApi = new MeetupApiQuerier();
 		JwtDTO token = meetupApi.generateApiToken();
-
 		try {
 			ArrayList<String> eventIds = meetupApi.getUpcomingEvents(token);
 			return Mono.when(Flux.fromIterable(eventIds)
-					.flatMap(eventId -> Mono.fromCallable(() -> meetupApi.getEventDetails(token, eventId)).flatMap(
-							event -> Mono.zip(Mono.just(event), Mono.just(MeetupEventManager.hasEvent(eventId))))
-							.flatMap(tuple -> {
-								return !tuple.getT2().equals("") ? editMessage(EvgIds.MEETUP_CHANNEL.id(),
-										Long.parseLong(tuple.getT2()), tuple.getT1().build())
-										: sendMessageIfValid(eventId, tuple.getT1());
-							})));
+				.flatMap(eventId -> Mono.fromCallable(
+					() -> meetupApi.getEventDetails(token, eventId))
+					.flatMap(
+						event -> Mono.zip(Mono.just(event), Mono.just(MeetupEventManager.hasEvent(eventId))))
+					.flatMap(tuple -> {
+						return !tuple.getT2().equals("") ? editMessage(EvgIds.MEETUP_CHANNEL.id(),
+							Long.parseLong(tuple.getT2()), tuple.getT1().build())
+							: sendMessageIfValid(eventId, tuple.getT1());
+					})));
 		} catch (Exception e) {
-			ChannelLogger.logMessageError("Error, unable to get events from Meetup API", e);
-			return Mono.empty();
+			return ChannelLogger.logMessageError("Error, unable to get events from Meetup API", e);
 		}
 	}
 

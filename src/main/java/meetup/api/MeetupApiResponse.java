@@ -109,7 +109,7 @@ public class MeetupApiResponse {
 		ArrayList<TopLevelMessageComponent> components = new ArrayList<>();
 		String humanDateTime = LocalDateTime.parse(dateTime, Utils.getDateFormatter()).format(Utils.getHumanReadableDateFormatter());
 		// Basic Event Details
-		components.add(TextDisplay.of("everyone\n# New event just dropped :fire:"));
+		components.add(TextDisplay.of("@everyone\n# New event just dropped :fire:"));
 		components.add(
 				Container.of(Color.RED,
 						Section.of(

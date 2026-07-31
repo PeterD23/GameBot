@@ -94,7 +94,7 @@ public class SeleniumDriver {
 							));
 			webDriver.navigate().refresh();
 			// Tada! How to log in to a website without solving a captcha
-			Element("//img[@alt='Photo of Bot McBotterson']");
+			Element("//img[contains(@alt,'Bot McBotterson')]");
 			unlock();
 			return ChannelLogger.logMessageInfo("Successfully logged into Meetup :cookie:");
 		} catch (Exception e) {

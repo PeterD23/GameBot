@@ -9,6 +9,8 @@ import com.wrapper.spotify.model_objects.specification.PlaylistTrack;
 import com.wrapper.spotify.requests.authorization.client_credentials.ClientCredentialsRequest;
 import com.wrapper.spotify.requests.data.playlists.GetPlaylistsItemsRequest;
 
+import config.ConfigLoader;
+import config.SpotifyConfig;
 import gamebot.CoreHelpers;
 import reactor.core.publisher.Mono;
 import reactor.util.Logger;
@@ -18,9 +20,13 @@ public class SpotifyHelpers extends CoreHelpers {
 
 	private static Logger log = Loggers.getLogger("spotify");
 	private static SpotifyApi api;
+	private static Random random = new Random();
 
-	public static Mono<Void> init(String clientId, String clientSecret) {
+	public static Mono<Void> init() {
 		return Mono.fromRunnable(() -> {
+			SpotifyConfig config = ConfigLoader.spotify();
+			String clientId = config.getClientId();
+			String clientSecret = config.getClientSecret();
 			if (clientId == null || clientSecret == null) {
 				log.error("Client ID and/or Client Secret not specified.");
 				return;
@@ -52,7 +58,6 @@ public class SpotifyHelpers extends CoreHelpers {
 		}
 		getAccessToken();
 		GetPlaylistsItemsRequest itemsRequest = api.getPlaylistsItems(playlistId).build();
-		Random random = new Random();
 		try {
 			Paging<PlaylistTrack> tracks = itemsRequest.execute();
 			Integer song = new Integer(random.nextInt(tracks.getTotal().intValue()));

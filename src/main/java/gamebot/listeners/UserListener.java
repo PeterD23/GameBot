@@ -46,9 +46,14 @@ public class UserListener extends CoreHelpers implements IListener {
 
 	private HashMap<String, ISlashCommand> commands = new HashMap<>();
 	private TrustSystem trust = TrustSystem.get();
+	private Random random = new Random();
 
 	public Mono<?> onReady(GuildCreateEvent event) {
-		return init(event).then(Mono.fromRunnable(() -> initialiseCommands()).then(MeetupLinker.readVerified()).then(SubscribeCommand.get().readGenres()).then(Birthday.readBirthdays()));
+		return init(event)
+				.then(Mono.fromRunnable(() -> initialiseCommands()))
+				.then(MeetupLinker.readVerified())
+				.then(SubscribeCommand.get().readGenres())
+				.then(Birthday.readBirthdays());
 	}
 
 	public Mono<?> onMessage(MessageCreateEvent event) {
@@ -70,7 +75,7 @@ public class UserListener extends CoreHelpers implements IListener {
 			}
 
 			String msg = message.getContent();
-			if (channel.getId().asLong() == EvgIds.MUSIC_CHANNEL.id() && new Random().nextInt(6) == 5
+			if (channel.getId().asLong() == EvgIds.MUSIC_CHANNEL.id() && random.nextInt(6) == 5
 					&& msg.startsWith("https://open.spotify.com/track/")) {
 				return sendMessage(EvgIds.MUSIC_CHANNEL.id(), "https://c.tenor.com/1S9zA-EMU4YAAAAC/stay-out.gif");
 			}
@@ -90,7 +95,7 @@ public class UserListener extends CoreHelpers implements IListener {
 			return hasRole(usr, EvgIds.VERIFIED_ROLE.id()) ? Mono.empty() : checkVerify(message, usr, true);
 		}));
 	}
-
+	
 	public Mono<Void> onMemberJoin(MemberJoinEvent event) {
 		if (Utils.isTestingMode())
 			return Mono.empty();
@@ -146,7 +151,7 @@ public class UserListener extends CoreHelpers implements IListener {
 			.collectList()
 			.map(list -> GameBot.gateway.getRestClient()
 				.getApplicationService()
-				.bulkOverwriteGuildApplicationCommand(applicationId, GameBot.SERVER, list)))
+				.bulkOverwriteGuildApplicationCommand(applicationId, EvgIds.SERVER.id(), list)))
 		.then(ChannelLogger.logMessageInfo("User Commands successfully registered!")).subscribe();
 	}
 	
@@ -157,7 +162,7 @@ public class UserListener extends CoreHelpers implements IListener {
 		client.getRestClient().getApplicationId().log(Loggers.getLogger("Register Message Command"))
 		.map(applicationId -> client.getRestClient()
 				.getApplicationService()
-				.createGuildApplicationCommand(applicationId, GameBot.SERVER, request).subscribe()
+				.createGuildApplicationCommand(applicationId,EvgIds.SERVER.id(), request).subscribe()
 		).subscribe();
 	}
 

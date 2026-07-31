@@ -55,7 +55,7 @@ import reactor.util.Loggers;
 public class TrustSystem {
 
 	public static TrustSystem trustSystem;
-	private String trustKey = "gamebot:TrustFactors";
+	private String trustKey = "TrustFactors";
 
 	public enum TrustRating {
 
@@ -75,7 +75,7 @@ public class TrustSystem {
 
 	public static TrustSystem get() {
 		if (trustSystem != null)
-			return trustSystem;
+			return trustSystem; 
 		return new TrustSystem();
 	}
 
@@ -105,7 +105,7 @@ public class TrustSystem {
 
 	private Mono<Void> submitTrust(SelectMenuInteractionEvent event, Message message) {
 		return event.deferEdit().withEphemeral(true).then(
-				event.getUser().asMember(Snowflake.of(GameBot.SERVER), EntityRetrievalStrategy.STORE_FALLBACK_REST))
+				event.getUser().asMember(Snowflake.of(EvgIds.SERVER.id()), EntityRetrievalStrategy.STORE_FALLBACK_REST))
 				.flatMap(member -> {
 					String trustedUser = message.getAuthor().get().getId().asString();
 					String memberId = member.getId().asString();
@@ -169,7 +169,7 @@ public class TrustSystem {
 
 	private Mono<Optional<ReportedUser>> existingReport(Message target) {
 		return RedisConnector
-				.readValue("gamebot:ReportedUsers", target.getUserData().id().asString(), ReportedUser.class).log();
+				.readValue("ReportedUsers", target.getUserData().id().asString(), ReportedUser.class).log();
 	}
 
 	private Mono<Void> confirmReport(SelectMenuInteractionEvent event, ReportedUser user, Snowflake uniqueId) {
@@ -204,7 +204,7 @@ public class TrustSystem {
 	private Mono<?> sendReport(ComponentInteractionEvent event, ReportedUser report) {
 		String reporter = event.getUser().getId().asString();
 		String reportedUser = report.getReported();
-		return RedisConnector.mergeObject("gamebot:ReportedUsers", reportedUser, ReportedUser.class, report)
+		return RedisConnector.mergeObject("ReportedUsers", reportedUser, ReportedUser.class, report)
 				.then(event.getInteraction().getGuild())
 				.zipWhen(guild -> guild.getMemberById(Snowflake.of(reporter),
 						EntityRetrievalStrategy.STORE_FALLBACK_REST))
@@ -341,7 +341,7 @@ public class TrustSystem {
 
 		long accountAge = ChronoUnit.DAYS.between(userJoinTime.get(), Instant.now());
 		long daysAfterServer = Math
-				.abs(ChronoUnit.DAYS.between(userJoinTime.get(), Snowflake.of(GameBot.SERVER).getTimestamp()));
+				.abs(ChronoUnit.DAYS.between(userJoinTime.get(), Snowflake.of(EvgIds.SERVER.id()).getTimestamp()));
 
 		if (daysAfterServer < 30)
 			return TrustFactor.of("Joined Edinburgh Video Gamers in its first month! (" + accountAge + " days)", 500);

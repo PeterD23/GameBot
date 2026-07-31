@@ -1,20 +1,21 @@
 {
 	"base":{
-		"redisHost":"<redis_hostname_or_ip>",
-		"redisPass":"<redis_password>",
-		"redisStorageKey":"<redis_storage_key>",
-		"discordAuthKey":"<discord_bot_user_auth>"
+		"redisHost": null,
+		"redisPass": null,
+		"redisStorageKey": null,
+		"discordAuthKey": null
 	},
 	"meetup": {
-		"clientId": "<meetup_api_client_id>",
-		"clientSecret": "<meetup_api_client_secret>",
-		"refreshToken": "<meetup_api_refresh_token>"
+		"clientId": null,
+		"clientSecret": null,
+		"refreshToken": null
 	},
 	"spotify": {
-		"clientId": "<spotify_api_client_id>",
-		"clientSecret": "<spotify_api_client_secret>"
+		"clientId": null
+		"clientSecret": null
 	},
 	"snowflakes": {
+		"server": 0,
 		"ch_intro": 0,
 		"ch_console": 0,
 		"ch_log": 0,

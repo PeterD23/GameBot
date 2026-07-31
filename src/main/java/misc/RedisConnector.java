@@ -21,6 +21,7 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.type.CollectionType;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 
+import config.BaseConfig;
 import gamebot.ChannelLogger;
 import io.lettuce.core.RedisClient;
 import io.lettuce.core.RedisURI.Builder;
@@ -35,15 +36,17 @@ public class RedisConnector {
 
 	private static RedisClient redis;
 	private static StatefulRedisConnection<String, String> connection;
+	private static String baseKey = "";
 
 	private static ObjectWriter ow;
 	private static ObjectMapper om;
 
-	public static RedisClient getRedisClient() {
+	public static RedisClient getRedisClient(BaseConfig base) {
+		baseKey = base.getRedisStorageKey();
 		if (redis == null) {
 			redis = RedisClient
-					.create(Builder.redis(Utils.readFile("host").trim(), 6379)
-							.withAuthentication("default", "gamebot")
+					.create(Builder.redis(base.getRedisHost(), 6379)
+							.withAuthentication("default", base.getRedisPass())
 							.build());
 			ow = new ObjectMapper().configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false).writer()
 					.withDefaultPrettyPrinter();
@@ -68,7 +71,7 @@ public class RedisConnector {
 				.flatMap(start -> Flux.fromIterable(map.entrySet()).flatMap(entry -> {
 					try {
 						String toJson = ow.writeValueAsString(entry.getValue());
-						return reactiveCommands.hset("gamebot:messagecache", entry.getKey(), toJson);
+						return reactiveCommands.hset(baseKey+":messagecache", entry.getKey(), toJson);
 					} catch (JsonProcessingException e) {
 						e.printStackTrace();
 						return Mono.empty();
@@ -94,7 +97,7 @@ public class RedisConnector {
 		List<T> list = new ArrayList<>();
 		list.add(object);
 		try {
-			return reactiveConnect().hset(key, field, ow.writeValueAsString(list)).then();
+			return reactiveConnect().hset(baseKey+":"+key, field, ow.writeValueAsString(list)).then();
 		} catch (Exception e) {
 			return ChannelLogger.logMessageError("Error in putting initial value", e);
 		}
@@ -115,11 +118,11 @@ public class RedisConnector {
 	}
 
 	public static Mono<String> readValue(String key, String field) {
-		return reactiveConnect().hget(key, field);
+		return reactiveConnect().hget(baseKey+":"+key, field);
 	}
 
 	public static <T> Mono<Optional<T>> readValue(String key, String field, Class<T> type) {
-		return reactiveConnect().hget(key, field).flatMap(entry -> {
+		return reactiveConnect().hget(baseKey+":"+key, field).flatMap(entry -> {
 			try {
 				return Mono.just(Optional.ofNullable(om.readValue(entry, type)));
 			} catch (Exception e) {
@@ -132,7 +135,7 @@ public class RedisConnector {
 		return readValue(key, field).hasElement()
 				.flatMap(has -> has
 						? readValue(key, field).flatMap(
-								data -> append(data, object).flatMap(list -> reactiveConnect().hset(key, field, list)))
+								data -> append(data, object).flatMap(list -> reactiveConnect().hset(baseKey+":"+key, field, list)))
 						: putInitialValue(key, field, object))
 				.then();
 	}
@@ -149,7 +152,7 @@ public class RedisConnector {
 			return value.isPresent() ? object.merge(value.get()) : object;
 		}).flatMap(merged -> {
 			try {
-				return reactiveConnect().hset(key, field, ow.writeValueAsString(merged));
+				return reactiveConnect().hset(baseKey+":"+key, field, ow.writeValueAsString(merged));
 			} catch (Exception e) {
 				return Mono.fromRunnable(() -> e.printStackTrace());
 			}
@@ -157,18 +160,18 @@ public class RedisConnector {
 	}
 
 	public static Mono<Void> cacheEntry(String key, String field, String value) {
-		return reactiveConnect().hset(key, field, value).then();
+		return reactiveConnect().hset(baseKey+":"+key, field, value).then();
 	}
 
 	public static Mono<Void> cacheEntry(String key, Pair<String, List<String>> pair) {
-		return reactiveConnect().hset(key, pair.getLeft(), Utils.listToSSVString(pair.getRight())).then();
+		return reactiveConnect().hset(baseKey+":"+key, pair.getLeft(), Utils.listToSSVString(pair.getRight())).then();
 	}
 
 	public static Mono<Void> deleteEntry(String key, String... fields) {
 		if(fields.length == 0) {
 			return Mono.empty();
 		}
-		return reactiveConnect().hdel(key, fields).then();
+		return reactiveConnect().hdel(baseKey+":"+key, fields).then();
 	}
 
 	public static Mono<HashMap<String, String>> cacheFile(File file, String key) {
@@ -181,12 +184,12 @@ public class RedisConnector {
 				return new ArrayList<String>();
 			}
 		}).map(RedisConnector::transformSSVListToValueMap).flatMap(map -> {
-			return reactiveConnect().hset(key, map).then(Mono.fromCallable(() -> transformMaptoHashMapOfN(map)));
+			return reactiveConnect().hset(baseKey+":"+key, map).then(Mono.fromCallable(() -> transformMaptoHashMapOfN(map)));
 		});
 	}
 	
 	public static Mono<HashMap<String, String>> readAllFields(String key){
-		return reactiveConnect().hgetall(key)
+		return reactiveConnect().hgetall(baseKey+":"+key)
 				.collectMap(item -> item.getKey(), item -> item.getValue())
 				.map(RedisConnector::transformMaptoHashMapOfN);
 	}

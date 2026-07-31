@@ -32,7 +32,7 @@ import reactor.core.publisher.Mono;
 
 public class SubscribeCommand implements ISlashCommand {
 
-	private String key = "gamebot:GameGenres";
+	private String key = "GameGenres";
 	private HashMap<String, String> genreRoles = new HashMap<>();
 	public static SubscribeCommand command;
 

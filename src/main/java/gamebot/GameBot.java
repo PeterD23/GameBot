@@ -1,11 +1,12 @@
 package gamebot;
 
-import java.net.SocketException;
 import java.time.Duration;
 import java.util.ArrayList;
 
 import org.slf4j.LoggerFactory;
 
+import config.BaseConfig;
+import config.ConfigLoader;
 import discord4j.common.store.Store;
 import discord4j.common.store.legacy.LegacyStoreLayout;
 import discord4j.core.DiscordClient;
@@ -20,30 +21,26 @@ import discord4j.core.event.domain.interaction.ModalSubmitInteractionEvent;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.event.domain.message.MessageUpdateEvent;
 import discord4j.gateway.intent.IntentSet;
-import discord4j.rest.request.RouteMatcher;
-import discord4j.rest.response.ResponseFunction;
 import discord4j.store.redis.RedisStoreService;
 import gamebot.listeners.AdminListener;
 import gamebot.listeners.IListener;
 import gamebot.listeners.UserListener;
 import io.lettuce.core.RedisClient;
-import io.netty.channel.unix.Errors;
 import meetup.selenium.MeetupEventManager;
 import misc.RedisConnector;
 import misc.SpotifyHelpers;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.Loggers;
-import reactor.util.retry.Retry;
 
 public class GameBot {
 
 	public static GatewayDiscordClient gateway;
 	private ArrayList<IListener> listeners = new ArrayList<>();
-	public static long SERVER = 731597823640076319L;
 
 	public static void main(String[] args) {
-		new GameBot().init(args);
+		ConfigLoader.init();
+		new GameBot().init();
 	}
 
 	/**
@@ -53,27 +50,25 @@ public class GameBot {
 	 * 
 	 * @param args
 	 */
-	public void init(String[] args) {
-		if (args.length == 0)
-			throw new IllegalArgumentException("Please enter a client key.");
-
+	public void init() {
+		BaseConfig base = ConfigLoader.base();
 		LoggerFactory.getLogger("init").info("SLF4J bound to Logback");
 		AdminListener admin = new AdminListener();
 		listeners.add(admin);
 		listeners.add(new UserListener());
 
 		@SuppressWarnings("resource")
-		RedisClient redis = RedisConnector.getRedisClient();
+		RedisClient redis = RedisConnector.getRedisClient(base);
 		// Hooks.onOperatorDebug(); Use for debugging
-		DiscordClient client = DiscordClientBuilder.create(args[0])
-			    .onClientResponse(ResponseFunction.retryWhen(
-			            RouteMatcher.any(),
-			            Retry.backoff(100, Duration.ofSeconds(2)).filter(throwable ->
-			                throwable instanceof SocketException ||
-			                throwable instanceof Errors.NativeIoException
-			            )
-			        ))
-			        .build();
+		DiscordClient client = DiscordClientBuilder.create(base.getDiscordKey()).build();
+//			    .onClientResponse(ResponseFunction.retryWhen(
+//			            RouteMatcher.any(),
+//			            Retry.backoff(100, Duration.ofSeconds(2)).filter(throwable ->
+//			                throwable instanceof SocketException ||
+//			                throwable instanceof Errors.NativeIoException
+//			            )
+//			        ))
+//			        .build();
 		gateway = client.gateway()
 				.setStore(Store.fromLayout(LegacyStoreLayout.of(RedisStoreService.builder().redisClient(redis).build())))
 				.setEnabledIntents(IntentSet.all())
@@ -86,7 +81,7 @@ public class GameBot {
 						buildMessageUpdateEvent(), 
 						buildChatInputInteractionEvent(), 
 						MeetupEventManager.init(), 
-						SpotifyHelpers.init(args[1], args[2])))
+						SpotifyHelpers.init()))
 				.then(gateway.onDisconnect()
 						.then(Mono.fromRunnable(() -> redis.shutdown())))
 				.block();

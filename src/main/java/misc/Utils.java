@@ -24,6 +24,7 @@ public class Utils {
 
 	public static boolean testingMode = false;
 	public static boolean denyAdmins = false;
+	private static Random random = new Random();
 	
 	@SafeVarargs
 	public static <T> ArrayList<T> combineDistinct(List<T>... lists){
@@ -37,7 +38,6 @@ public class Utils {
 			"You're my number one member here on this Discord!", "Let's see if we can't find those mountain lions." };
 	
 	public static String getARandomGreeting() {
-		Random random = new Random();
 		return randomHellos[random.nextInt(randomHellos.length)];
 	}
 

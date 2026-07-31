@@ -1,6 +1,5 @@
 package meetup.selenium;
 
-import java.io.File;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -17,15 +16,31 @@ import reactor.core.publisher.Mono;
 
 public class MeetupEventManager {
 
-	private static String key = "gamebot:MeetupEvents";
+	private static String key = "MeetupEvents";
 	private static HashMap<String, Pair<String, String>> events = new HashMap<>();
 	
 	public static Mono<Void> init() {
-		return RedisConnector.cacheFile(new File("events"), key)
+		return RedisConnector.readAllFields(key)
 				.flatMap(map -> {
 					map.forEach((k, v) -> events.put(k, Pair.of(v.split(" ")[0], v.split(" ")[1])));
+					return Mono.just(events);
+				})
+				.flatMap(eventsMap -> {
+					events = eventsMap; // I dont really know why this works, is it a scoping issue?
 					return Mono.empty();
-				}).then();
+				})
+				.then();
+	}
+	
+	public static Mono<Void> logNumberOfEntries() {
+		return Mono.fromRunnable( () -> {
+			System.out.println("Events size is "+events.size());
+			for(String key : events.keySet()){
+				Pair<String,String> p = events.get(key);
+				System.out.println("Meetup ID: "+key+", Discord ID:"+p.getLeft()+", Date/Time: "+p.getRight());
+			}
+		})
+		.then();
 	}
 	
 	public static Mono<Void> addEvent(String eventId, String messageId, String timeToDelete) {

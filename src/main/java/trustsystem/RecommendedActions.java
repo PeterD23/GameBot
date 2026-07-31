@@ -35,7 +35,7 @@ public class RecommendedActions {
 
 	private static String key = "gamebot:ReportedUsers";
 	private static GatewayDiscordClient client = GameBot.gateway;
-	private static Snowflake guildId = Snowflake.of(GameBot.SERVER);
+	private static Snowflake guildId = Snowflake.of(EvgIds.SERVER.id());
 
 	public interface IRecommendedAction {
 		Mono<?> perform(ReportedUser report, TrustRating confidence);

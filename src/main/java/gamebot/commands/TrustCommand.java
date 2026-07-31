@@ -19,7 +19,7 @@ import discord4j.discordjson.json.ApplicationCommandRequest;
 import discord4j.discordjson.json.ImmutableApplicationCommandRequest;
 import discord4j.rest.util.Color;
 import gamebot.ChannelLogger;
-import gamebot.GameBot;
+import gamebot.EvgIds;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
 import trustsystem.TrustFactor;
@@ -62,7 +62,7 @@ public class TrustCommand implements ISlashCommand {
 				.then(ChannelLogger.logMessageInfo("Member "+self.getId().asString()+" used /trust command"))
 				.then(event.getOption("user").isPresent()
 						? event.getOptionAsUser("user")
-								.flatMap(option -> option.asMember(Snowflake.of(GameBot.SERVER),
+								.flatMap(option -> option.asMember(Snowflake.of(EvgIds.SERVER.id()),
 										EntityRetrievalStrategy.STORE_FALLBACK_REST))
 						: Mono.just(self))
 				.flatMap(member -> trust.getServerFactors(member).zipWith(trust.getTrustFactors(member))

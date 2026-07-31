@@ -1,44 +1,32 @@
-package meetup.api;
-import com.fasterxml.jackson.annotation.JsonGetter;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+package config;
 
-@JsonIgnoreProperties(ignoreUnknown=true)
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class MeetupConfig {
 
-	private String meetupUser;
-	private String meetupPass;
+	@JsonProperty("clientId")
 	private String clientId;
+	@JsonProperty("clientSecret")
 	private String clientSecret;
+	@JsonProperty("refreshToken")
 	private String refreshToken;
-	
-	@JsonGetter("meetupUser")
-	public String getMeetupUser() {
-		return meetupUser;
-	}
-	
-	@JsonGetter("meetupPass")
-	public String getMeetupPass() {
-		return meetupPass;
-	}
-	
-	@JsonGetter("clientId")
+
 	public String getClientId() {
 		return clientId;
 	}
-	
-	@JsonGetter("clientSecret")
+
 	public String getClientSecret() {
 		return clientSecret;
 	}
-	
-	@JsonGetter("refreshToken")
+
 	public String getRefreshToken() {
 		return refreshToken;
 	}
-	
+
 	public void setToken(String refreshToken) {
 		this.refreshToken = refreshToken;
 	}
-	
-	
+
 }
