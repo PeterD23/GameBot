@@ -1,0 +1,35 @@
+{
+	"base":{
+		"redisHost":"<redis_hostname_or_ip>",
+		"redisPass":"<redis_password>",
+		"redisStorageKey":"<redis_storage_key>",
+		"discordAuthKey":"<discord_bot_user_auth>"
+	},
+	"meetup": {
+		"clientId": "<meetup_api_client_id>",
+		"clientSecret": "<meetup_api_client_secret>",
+		"refreshToken": "<meetup_api_refresh_token>"
+	},
+	"spotify": {
+		"clientId": "<spotify_api_client_id>",
+		"clientSecret": "<spotify_api_client_secret>"
+	},
+	"snowflakes": {
+		"ch_intro": 0,
+		"ch_console": 0,
+		"ch_log": 0,
+		"ch_general": 0,
+		"ch_music": 0,
+		"ch_meetup": 0,
+		"ch_admin": 0,
+		"r_admin": 0,
+		"r_mod": 0,
+		"r_verified": 0,
+		"r_meetupver": 0,
+		"r_newacc": 0,
+		"m_bot": 0,
+		"cat_general": 0,
+		"cat_topics": 0,
+		"cat_genres": 0
+	}	
+}

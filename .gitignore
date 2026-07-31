@@ -26,3 +26,7 @@ hs_err_pid*
 # NodeJS Dependencies
 */node_modules/
 **/server/dist/**/*.js
+
+# Config files and private keys
+**.json
+**.pem
